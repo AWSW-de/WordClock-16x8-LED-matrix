@@ -1,4 +1,4 @@
-# WordClock-16x16-LED-matrix-2023-
+# WordClock-16x16-LED-matrix-2023
 
 WordClock 16x16 LED matrix (2023), super easy to print and build, 3 wires to solder only.
 
