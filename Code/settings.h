@@ -6,7 +6,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V1.0.0
+// # Compatible with WordClock version: V1.1.0
 // #
 // ###########################################################################################################################################
 /*
@@ -36,7 +36,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ
 // ###########################################################################################################################################
 // # LED language layout default: !!! SET YOUR DEFAULT LANGUAGE HERE !!!
 // ###########################################################################################################################################
-int langLEDlayout_default = 1;  // LED language layout default (0 = DE; 1 = EN)
+int langLEDlayout_default = 1;  // LED language layout default (0 = DE; 1 = EN; 2 = NL)
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
@@ -78,7 +78,7 @@ const char* NTPserver = "pool.ntp.org";               // Time server address. Ch
 // ###########################################################################################################################################
 // # Test functions:
 // ###########################################################################################################################################
-int testTime = 0;  // LED text output test
+int testTime = 0;  // LED time text output test
 
 
 // ###########################################################################################################################################

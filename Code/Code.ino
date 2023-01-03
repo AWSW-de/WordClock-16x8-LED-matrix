@@ -55,7 +55,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.0.0";
+const char* WORD_CLOCK_VERSION = "V1.1.0";
 
 
 // ###########################################################################################################################################
@@ -103,14 +103,16 @@ void setup() {
   strip.begin();                   // Init the LEDs
   intensity = intensity_day;       // Set the intenity to day mode for startup
   strip.setBrightness(intensity);  // Set LED brightness
-  DisplayTest();                   // Perform the LED test
-  WIFI_login();                    // WiFiManager
-  WiFiManager1stBootFix();         // WiFi Manager 1st connect fix
-  ShowIPaddress();                 // Display the current IP-address
-  configNTPTime();                 // NTP time setup
-  setupWebInterface();             // Generate the configuration page
-  update_display();                // Update LED display
-  handleOTAupdate();               // Start the ESP32 OTA update server
+  if (testTime == 0) {             // If time text test mode is not used:
+    DisplayTest();                 // Perform the LED test
+    WIFI_login();                  // WiFiManager
+    WiFiManager1stBootFix();       // WiFi Manager 1st connect fix
+    ShowIPaddress();               // Display the current IP-address
+    configNTPTime();               // NTP time setup
+    setupWebInterface();           // Generate the configuration page
+    update_display();              // Update LED display
+    handleOTAupdate();             // Start the ESP32 OTA update server
+  }
   Serial.println("######################################################################");
   Serial.println("# WordClock startup finished...");
   Serial.println("######################################################################");
@@ -149,6 +151,7 @@ void setupWebInterface() {
   // Set layout language:
   if (langLEDlayout == 0) selectLang = "Current layout language: German";
   if (langLEDlayout == 1) selectLang = "Current layout language: English";
+  if (langLEDlayout == 2) selectLang = "Current layout language: Dutch";
   ESPUI.button(selectLang, &buttonlangChange, ControlColor::Dark, "Change layout language", (void*)4);
 
 
@@ -360,11 +363,9 @@ void buttonlangChange(Control* sender, int type, void* param) {
     case B_UP:
       if (langChangeCounter == 1) {
         Serial.println("WORDCLOCK LAYOUT LANGUAGE CHANGE EXECUTED");
-        if (langLEDlayout == 0) {  // Flip langLEDlayout setting DE to EN / EN to DE
-          preferences.putUInt("langLEDlayout", 1);
-        } else {
-          preferences.putUInt("langLEDlayout", 0);
-        }
+        if (langLEDlayout == 0) preferences.putUInt("langLEDlayout", 1);  // DE to EN
+        if (langLEDlayout == 1) preferences.putUInt("langLEDlayout", 2);  // EN to NL
+        if (langLEDlayout == 2) preferences.putUInt("langLEDlayout", 0);  // NL to DE
         delay(1000);
         preferences.end();
         Serial.println("##########################################################################");
@@ -1158,18 +1159,19 @@ void update_display() {
 
   if (testTime == 0) {  // Show the current time:
     show_time(iHour, iMinute);
-  } else {                          // TEST THE DISPLAY TIME OUTPUT:
-    for (int i = 0; i < 13; i++) {  // 12 hours only:
+  } else {  // TEST THE DISPLAY TIME OUTPUT:
+    strip.setBrightness(33);
+    for (int i = 0; i <= 12; i++) {  // 12 hours only:
       show_time(i, 0);
       delay(1000);
     }
-    for (int i = 0; i < 1; i++) {  // Hours 0 to 1 with all minute texts:
+    for (int i = 0; i <= 3; i++) {  // Hours 0 to 3 with all minute texts:
       for (int y = 0; y < 60; y++) {
         show_time(i, y);
-        delay(1000);
+        delay(500);
       }
     }
-    // Show "ZEIT"/"TIME" to complete the test:
+    // Show "ZEIT"/"TIME/TIJD" to complete the test:
     back_color();
     if (langLEDlayout == 0) {  // DE:
       setLED(1, 4, 1);
@@ -1179,8 +1181,12 @@ void update_display() {
       setLED(33, 36, 1);
       setLED(59, 62, 1);  // 2nd row
     }
+    if (langLEDlayout == 2) {  // NL:
+      setLED(69, 72, 1);
+      setLED(87, 90, 1);  // 2nd row
+    }
     strip.show();
-    delay(5000);
+    delay(3000);
   }
 }
 
@@ -1506,6 +1512,149 @@ void show_time(int hours, int minutes) {
     }
   }
 
+
+  // ########################################################### NL:
+  if (langLEDlayout == 2) {  // NL:
+
+    // HET IS:
+    setLED(13, 15, 1);
+    setLED(16, 18, 1);  // 2nd row
+    setLED(10, 11, 1);
+    setLED(20, 21, 1);  // 2nd row
+
+    // VIJF: (Minuten) x:05, x:25, x:35, x:55
+    if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
+      setLED(0, 3, 1);
+      setLED(28, 31, 1);  // 2nd row
+    }
+    // KWART: x:15, x:45
+    if ((minDiv == 3) || (minDiv == 9)) {
+      setLED(38, 42, 1);
+      setLED(53, 57, 1);  // 2nd row
+    }
+    // TIEN: (Minuten) x:10, x:50
+    if ((minDiv == 2) || (minDiv == 10)) {
+      setLED(44, 47, 1);
+      setLED(48, 51, 1);  // 2nd row
+    }
+    // TIEN: (TIEN VOOR HALF, TIEN OVER HALF) x:20, x:40 (on request not set to TWINTIG OVER)
+    if ((minDiv == 4) || (minDiv == 8)) {
+      setLED(44, 47, 1);
+      setLED(48, 51, 1);  // 2nd row
+    }
+    // OVER: x:05, x:10, x:15, x:35, x:40
+    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 7) || (minDiv == 8)) {
+      setLED(33, 36, 1);
+      setLED(59, 62, 1);  // 2nd row
+    }
+    // VOOR: x:20, x:25, x:45, x:50, x:55
+    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
+      setLED(64, 67, 1);
+      setLED(92, 95, 1);  // 2nd row
+    }
+    // HALF:
+    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 6) || (minDiv == 7) || (minDiv == 8)) {
+      setLED(107, 110, 1);
+      setLED(113, 116, 1);  // 2nd row
+    }
+
+
+    //set hour from 1 to 12 (at noon, or midnight)
+    int xHour = (iHour % 12);
+    if (xHour == 0)
+      xHour = 12;
+    // at minute 20 hour needs to be counted up:
+    // tien voor half 2 = 13:20
+    if (iMinute >= 20) {
+      if (xHour == 12)
+        xHour = 1;
+      else
+        xHour++;
+    }
+
+
+    switch (xHour) {
+      case 1:
+        {
+          setLED(99, 101, 1);   // EEN
+          setLED(122, 124, 1);  // 2nd row
+          break;
+        }
+      case 2:
+        {
+          setLED(203, 206, 1);  // TWEE
+          setLED(209, 212, 1);  // 2nd row
+          break;
+        }
+      case 3:
+        {
+          setLED(164, 167, 1);  // DRIE
+          setLED(184, 187, 1);  // 2nd row
+          break;
+        }
+      case 4:
+        {
+          setLED(198, 201, 1);  // VIER
+          setLED(214, 217, 1);  // 2nd row
+          break;
+        }
+      case 5:
+        {
+          setLED(160, 163, 1);  // VIJF
+          setLED(188, 191, 1);  // 2nd row
+          break;
+        }
+      case 6:
+        {
+          setLED(96, 98, 1);    // ZES
+          setLED(125, 127, 1);  // 2nd row
+          break;
+        }
+      case 7:
+        {
+          setLED(129, 133, 1);  // ZEVEN
+          setLED(154, 158, 1);  // 2nd row
+          break;
+        }
+      case 8:
+        {
+          setLED(102, 105, 1);  // ACHT
+          setLED(118, 121, 1);  // 2nd row
+          break;
+        }
+      case 9:
+        {
+          setLED(171, 175, 1);  // NEGEN
+          setLED(176, 180, 1);  // 2nd row
+          break;
+        }
+      case 10:
+        {
+          setLED(140, 143, 1);  // TIEN (Stunden)
+          setLED(144, 147, 1);  // 2nd row
+          break;
+        }
+      case 11:
+        {
+          setLED(168, 170, 1);  // ELF
+          setLED(181, 183, 1);  // 2nd row
+          break;
+        }
+      case 12:
+        {
+          setLED(134, 139, 1);  // TWAALF
+          setLED(148, 153, 1);  // 2nd row
+          break;
+        }
+    }
+
+    if (iMinute < 5) {
+      setLED(193, 195, 1);  // UHR
+      setLED(220, 222, 1);  // 2nd row
+    }
+  }
+
+
   strip.show();
 }
 
@@ -1611,6 +1760,54 @@ void showMinutes(int minutes) {
         }
     }
   }
+
+  // ##################################################### NL:
+
+  if (langLEDlayout == 2) {  // NL:
+
+    switch (minMod) {
+      case 1:
+        {
+          setLED(238, 238, 1);  // +
+          setLED(241, 241, 1);  // 2nd row
+          setLED(236, 236, 1);  // 1
+          setLED(243, 243, 1);  // 2nd row
+          setLED(225, 231, 1);  // MINUTEN (set to this on request, because there was no space for the extra word "minuut")
+          setLED(248, 254, 1);  // 2nd row
+          break;
+        }
+      case 2:
+        {
+          setLED(238, 238, 1);  // +
+          setLED(241, 241, 1);  // 2nd row
+          setLED(235, 235, 1);  // 2
+          setLED(244, 244, 1);  // 2nd row
+          setLED(225, 231, 1);  // MINUTEN
+          setLED(248, 254, 1);  // 2nd row
+          break;
+        }
+      case 3:
+        {
+          setLED(238, 238, 1);  // +
+          setLED(241, 241, 1);  // 2nd row
+          setLED(234, 234, 1);  // 3
+          setLED(245, 245, 1);  // 2nd row
+          setLED(225, 231, 1);  // MINUTEN
+          setLED(248, 254, 1);  // 2nd row
+          break;
+        }
+      case 4:
+        {
+          setLED(238, 238, 1);  // +
+          setLED(241, 241, 1);  // 2nd row
+          setLED(233, 233, 1);  // 4
+          setLED(246, 246, 1);  // 2nd row
+          setLED(225, 231, 1);  // MINUTEN
+          setLED(248, 254, 1);  // 2nd row
+          break;
+        }
+    }
+  }
 }
 
 
@@ -1631,15 +1828,19 @@ void back_color() {
 // LED test --> no blank display if WiFi was not set yet:
 void DisplayTest() {
   if (useledtest) {
+    int leddelay = 1;
     Serial.println("Display test...");
     uint32_t c1 = strip.Color(redVal_time, greenVal_time, blueVal_time);
     for (int i = 0; i < NUMPIXELS; i++) {
       strip.setPixelColor(i, c1);
+      strip.show();
+      delay(leddelay);
+      strip.setPixelColor(i, 0, 0, 0);
+      strip.show();
+      delay(leddelay);
     }
-    strip.show();
   }
 }
-
 
 
 // ###########################################################################################################################################
@@ -1665,6 +1866,16 @@ void SetWLAN(uint32_t color) {
       strip.setPixelColor(i, color);
     }
   }
+
+  if (langLEDlayout == 2) {  // NL:
+    for (uint16_t i = 75; i < 79; i++) {
+      strip.setPixelColor(i, color);
+    }
+    for (uint16_t i = 81; i < 85; i++) {  // 2nd row
+      strip.setPixelColor(i, color);
+    }
+  }
+
   strip.show();
 }
 
@@ -1767,6 +1978,10 @@ void initTime(String timezone) {
     if (langLEDlayout == 1) {  // EN:
       setLED(33, 36, 1);
       setLED(59, 62, 1);  // 2nd row
+    }
+    if (langLEDlayout == 2) {  // NL:
+      setLED(69, 72, 1);
+      setLED(87, 90, 1);  // 2nd row
     }
     strip.show();
     delay(5000);
@@ -2054,20 +2269,7 @@ void handleOTAupdate() {
       } else if (upload.status == UPLOAD_FILE_END) {
         if (Update.end(true)) {  //true to set the size to the current progress
           Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-          // back_color();
-          // redVal_time = 0;
-          // greenVal_time = 255;
-          // blueVal_time = 0;
-          // if (langLEDlayout == 0) {  // DE:
-          //   setLED(165, 172, 1);
-          //   setLED(52, 57, 1);
-          // }
-          // if (langLEDlayout == 1) {  // EN:
-          //   setLED(24, 28, 1);
-          //   setLED(120, 126, 1);
-          // }
-          // strip.show();
-          delay(3000);
+          delay(1000);
         } else {
           Update.printError(Serial);
         }
