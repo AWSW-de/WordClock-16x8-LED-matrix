@@ -6,7 +6,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V1.1.0
+// # Compatible with WordClock version: V1.2.0
 // #
 // ###########################################################################################################################################
 /*
@@ -56,9 +56,9 @@ int day_time_stop_default = 22;   // Define day mode end --> time after is then 
 // ###########################################################################################################################################
 // # Various default settings:
 // ###########################################################################################################################################
-#define AP_TIMEOUT 240       // Timeout in seconds for AP / WLAN config
-int useledtest_default = 1;  // Show start animation and display test at boot
-int useshowip_default = 1;   // Show the current ip at boot
+#define AP_TIMEOUT 240             // Timeout in seconds for AP / WLAN config
+int useshowip_default = 1;         // Show the current ip at boot
+int usesinglemin_default = 1;  // Show the single minutes
 
 
 // ###########################################################################################################################################
