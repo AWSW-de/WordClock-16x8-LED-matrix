@@ -55,7 +55,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.2.0";
+const char* WORD_CLOCK_VERSION = "V1.3.0";
 
 
 // ###########################################################################################################################################
@@ -78,6 +78,7 @@ int iMinute = 0;
 int iSecond = 0;
 bool updatedevice = true;
 bool updatemode = false;
+bool changedvalues = false;
 int WiFiManFix = 0;
 String iStartTime = "Failed to obtain time on startup... Please restart...";
 int redVal_time, greenVal_time, blueVal_time;
@@ -122,9 +123,10 @@ void setup() {
 // # Loop function which runs all the time after the startup was done:
 // ###########################################################################################################################################
 void loop() {
-  printLocalTime();
-  if (updatedevice == true) {  // Allow display updates (normal usage)
-    update_display();          // Update display (1x per minute regulary)
+  printLocalTime();                               // Locally get the time (NTP server requests done 1x per hour)
+  if (updatedevice == true) {                     // Allow display updates (normal usage)
+    if (changedvalues == true) setFlashValues();  // Write settings to flash
+    update_display();                             // Update display (1x per minute regulary)
   }
   dnsServer.processNextRequest();                    // Update web server
   if (updatemode == true) updserver.handleClient();  // ESP32 OTA updates
@@ -186,6 +188,7 @@ void setupWebInterface() {
 
   // Day mode stop time:
   ESPUI.number("Day time ends after", call_day_time_stop, ControlColor::Dark, day_time_stop, 12, 23);
+
 
 
   // Section Startup:
@@ -285,6 +288,7 @@ void setupWebInterface() {
 // # Read settings from flash:
 // ###########################################################################################################################################
 void getFlashValues() {
+  Serial.println("Read settings from flash: START");
   langLEDlayout = preferences.getUInt("langLEDlayout", langLEDlayout_default);
   redVal_time = preferences.getUInt("redVal_time", redVal_time_default);
   greenVal_time = preferences.getUInt("greenVal_time", greenVal_time_default);
@@ -294,9 +298,39 @@ void getFlashValues() {
   usenightmode = preferences.getUInt("usenightmode", usenightmode_default);
   day_time_start = preferences.getUInt("day_time_start", day_time_start_default);
   day_time_stop = preferences.getUInt("day_time_stop", day_time_stop_default);
-  // useledtest = preferences.getUInt("useledtest", useledtest_default);
   useshowip = preferences.getUInt("useshowip", useshowip_default);
   usesinglemin = preferences.getUInt("usesinglemin", usesinglemin_default);
+  Serial.println("Read settings from flash: END");
+}
+
+
+// ###########################################################################################################################################
+// # Write settings to flash:
+// ###########################################################################################################################################
+void setFlashValues() {
+  Serial.println("Write settings to flash: START");
+  changedvalues = false;
+  preferences.putUInt("langLEDlayout", langLEDlayout);
+  preferences.putUInt("redVal_time", redVal_time);
+  preferences.putUInt("greenVal_time", greenVal_time);
+  preferences.putUInt("blueVal_time", blueVal_time);
+  preferences.putUInt("intensity_day", intensity_day);
+  preferences.putUInt("intensity_night", intensity_night);
+  preferences.putUInt("usenightmode", usenightmode);
+  preferences.putUInt("day_time_start", day_time_start);
+  preferences.putUInt("day_time_stop", day_time_stop);
+  preferences.putUInt("useshowip", useshowip);
+  preferences.putUInt("usesinglemin", usesinglemin);
+  Serial.println("Write settings to flash: END");
+  if (usenightmode == 1) {
+    if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
+      ESPUI.print(statusNightModeID, "Day time");
+    } else {
+      ESPUI.print(statusNightModeID, "Night time");
+    }
+  } else {
+    ESPUI.print(statusNightModeID, "Night mode not used");
+  }
 }
 
 
@@ -306,6 +340,7 @@ void getFlashValues() {
 int WordClockResetCounter = 0;
 void buttonWordClockReset(Control* sender, int type, void* param) {
   updatedevice = false;
+  delay(1000);
   if (WordClockResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (WordClockResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
   switch (type) {
@@ -324,7 +359,6 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
         preferences.putUInt("blueVal_time", blueVal_time_default);
         preferences.putUInt("intensity_day", intensity_day_default);
         preferences.putUInt("intensity_night", intensity_night_default);
-        // preferences.putUInt("useledtest", useledtest_default);
         preferences.putUInt("useshowip", useshowip_default);
         preferences.putUInt("usenightmode", usenightmode_default);
         preferences.putUInt("day_time_stop", day_time_stop_default);
@@ -353,6 +387,7 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
 int langChangeCounter = 0;
 void buttonlangChange(Control* sender, int type, void* param) {
   updatedevice = false;
+  delay(1000);
   if (langChangeCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (langChangeCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
   switch (type) {
@@ -970,6 +1005,9 @@ int getDigit(int number, int pos) {
 int ResetCounter = 0;
 void buttonRestart(Control* sender, int type, void* param) {
   updatedevice = false;
+  delay(1000);
+  if (changedvalues == true) setFlashValues();  // Write settings to flash
+  delay(1000);
   preferences.end();
   if (ResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (ResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
@@ -996,6 +1034,7 @@ void buttonRestart(Control* sender, int type, void* param) {
 int WIFIResetCounter = 0;
 void buttonWiFiReset(Control* sender, int type, void* param) {
   updatedevice = false;
+  delay(1000);
   if (WIFIResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (WIFIResetCounter == 0) SetWLAN(strip.Color(255, 0, 0));
   if (WIFIResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
@@ -1005,6 +1044,7 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
       if (WIFIResetCounter == 0) {
         ESPUI.print(statusLabelID, "WIFI SETTINGS RESET REQUESTED");
         preferences.putUInt("WiFiManFix", 0);  // WiFi Manager Fix Reset
+        delay(1000);
         preferences.end();
         delay(1000);
       }
@@ -1039,6 +1079,7 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
 void buttonUpdate(Control* sender, int type, void* param) {
   preferences.end();
   updatedevice = false;
+  delay(1000);
   updatemode = true;
   delay(1000);
   back_color();
@@ -1061,6 +1102,8 @@ void buttonUpdate(Control* sender, int type, void* param) {
 // # Show a LED output for RESET in the different languages:
 // ###########################################################################################################################################
 void ResetTextLEDs(uint32_t color) {
+  updatedevice = false;
+  delay(1000);
   back_color();
 
   if (langLEDlayout == 0) {      // DE:
@@ -1101,7 +1144,7 @@ void ResetTextLEDs(uint32_t color) {
 // ###########################################################################################################################################
 void setLEDcol(int ledNrFrom, int ledNrTo, uint32_t color) {
   if (ledNrFrom > ledNrTo) {
-    setLED(ledNrTo, ledNrFrom, 1);  //sets LED numbers in correct order (because of the date programming below)
+    setLED(ledNrTo, ledNrFrom, 1);  // Sets LED numbers in correct order
   } else {
     for (int i = ledNrFrom; i <= ledNrTo; i++) {
       if ((i >= 0) && (i < NUMPIXELS))
@@ -1116,30 +1159,22 @@ void setLEDcol(int ledNrFrom, int ledNrTo, uint32_t color) {
 // ###########################################################################################################################################
 void switchNightMode(Control* sender, int value) {
   updatedevice = false;
+  delay(1000);
   switch (value) {
     case S_ACTIVE:
-      // Serial.print("Active:");
-      preferences.putUInt("usenightmode", 1);
       usenightmode = 1;
       if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
         intensity = intensity_day;
-        ESPUI.print(statusNightModeID, "Day time");
       } else {
         intensity = intensity_night;
-        ESPUI.print(statusNightModeID, "Night time");
       }
       break;
     case S_INACTIVE:
-      // Serial.print("Inactive");
-      preferences.putUInt("usenightmode", 0);
-      ESPUI.print(statusNightModeID, "Night mode not used");
       intensity = intensity_day;
       usenightmode = 0;
       break;
   }
-  // Serial.print(" ");
-  // Serial.println(sender->id);
-  update_display();
+  changedvalues = true;
   updatedevice = true;
 }
 
@@ -1148,19 +1183,16 @@ void switchNightMode(Control* sender, int value) {
 // ###########################################################################################################################################
 void switchSingleMinutes(Control* sender, int value) {
   updatedevice = false;
+  delay(1000);
   switch (value) {
     case S_ACTIVE:
-      preferences.putUInt("usesinglemin", 1);
       usesinglemin = 1;
       break;
     case S_INACTIVE:
-      preferences.putUInt("usesinglemin", 0);
       usesinglemin = 0;
       break;
   }
-  // Serial.print(" ");
-  // Serial.println(sender->id);
-  update_display();
+  changedvalues = true;
   updatedevice = true;
 }
 
@@ -1170,18 +1202,16 @@ void switchSingleMinutes(Control* sender, int value) {
 // ###########################################################################################################################################
 void switchShowIP(Control* sender, int value) {
   updatedevice = false;
+  delay(1000);
   switch (value) {
     case S_ACTIVE:
-      // Serial.print("Active:");
-      preferences.putUInt("useshowip", 1);
+      useshowip = 1;
       break;
     case S_INACTIVE:
-      // Serial.print("Inactive");
-      preferences.putUInt("useshowip", 0);
+      useshowip = 0;
       break;
   }
-  // Serial.print(" ");
-  // Serial.println(sender->id);
+  changedvalues = true;
   updatedevice = true;
 }
 
@@ -1194,10 +1224,8 @@ void update_display() {
   if (usenightmode == 1) {
     if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
       intensity = intensity_day;
-      ESPUI.print(statusNightModeID, "Day time");  // TODO: Update every few seconds only
     } else {
       intensity = intensity_night;
-      ESPUI.print(statusNightModeID, "Night time");  // TODO: Update every few seconds only
     }
   } else {
     intensity = intensity_day;
@@ -1873,7 +1901,7 @@ void back_color() {
 // # Startup WiFi text function:
 // ###########################################################################################################################################
 void SetWLAN(uint32_t color) {
-  Serial.println("Show text WLAN...");
+  Serial.println("Show text WLAN/WIFI...");
 
   if (langLEDlayout == 0) {  // DE:
     for (uint16_t i = 5; i < 9; i++) {
@@ -1956,7 +1984,7 @@ void WiFiManager1stBootFix() {
 // ###########################################################################################################################################
 void setLED(int ledNrFrom, int ledNrTo, int switchOn) {
   if (ledNrFrom > ledNrTo) {
-    setLED(ledNrTo, ledNrFrom, switchOn);  //sets LED numbers in correct order (because of the date programming below)
+    setLED(ledNrTo, ledNrFrom, switchOn);  // Sets LED numbers in correct order
   } else {
     for (int i = ledNrFrom; i <= ledNrTo; i++) {
       if ((i >= 0) && (i < NUMPIXELS))
@@ -1994,40 +2022,48 @@ void initTime(String timezone) {
     back_color();
     Serial.println("Failed to obtain time");
     ESPUI.print(statusLabelID, "Failed to obtain time");
+
     if (langLEDlayout == 0) {  // DE:
       setLEDcol(1, 4, strip.Color(255, 0, 0));
       setLEDcol(27, 30, strip.Color(255, 0, 0));  // 2nd row
     }
+
     if (langLEDlayout == 1) {  // EN:
       setLEDcol(33, 36, strip.Color(255, 0, 0));
       setLEDcol(59, 62, strip.Color(255, 0, 0));  // 2nd row
     }
+
     if (langLEDlayout == 2) {  // NL:
       setLEDcol(69, 72, strip.Color(255, 0, 0));
       setLEDcol(87, 90, strip.Color(255, 0, 0));  // 2nd row
     }
+
     strip.show();
-    delay(3000);
+    delay(1000);
     ESP.restart();
     return;
   } else {
     back_color();
     Serial.println("Failed to obtain time");
     ESPUI.print(statusLabelID, "Failed to obtain time");
+
     if (langLEDlayout == 0) {  // DE:
       setLEDcol(1, 4, strip.Color(0, 255, 0));
       setLEDcol(27, 30, strip.Color(0, 255, 0));  // 2nd row
     }
+
     if (langLEDlayout == 1) {  // EN:
       setLEDcol(33, 36, strip.Color(0, 255, 0));
       setLEDcol(59, 62, strip.Color(0, 255, 0));  // 2nd row
     }
+
     if (langLEDlayout == 2) {  // NL:
       setLEDcol(69, 72, strip.Color(0, 255, 0));
       setLEDcol(87, 90, strip.Color(0, 255, 0));  // 2nd row
     }
+
     strip.show();
-    delay(3000);
+    delay(1000);
   }
   Serial.println("Got the time from NTP");
   setTimezone(timezone);
@@ -2077,6 +2113,8 @@ void setTime(int yr, int month, int mday, int hr, int minute, int sec, int isDst
 // # GUI: Convert hex color value to RGB int values - TIME:
 // ###########################################################################################################################################
 void getRGBTIME(String hexvalue) {
+  updatedevice = false;
+  delay(1000);
   hexvalue.toUpperCase();
   char c[7];
   hexvalue.toCharArray(c, 8);
@@ -2089,13 +2127,11 @@ void getRGBTIME(String hexvalue) {
   // Serial.println(green);
   // Serial.print("blue: ");
   // Serial.println(blue);
-  preferences.putUInt("redVal_time", red);
-  preferences.putUInt("greenVal_time", green);
-  preferences.putUInt("blueVal_time", blue);
   redVal_time = red;
   greenVal_time = green;
   blueVal_time = blue;
-  update_display();
+  changedvalues = true;
+  updatedevice = true;
 }
 
 
@@ -2129,13 +2165,15 @@ void colCallTIME(Control* sender, int type) {
 // # GUI: Slider change for LED intensity: DAY
 // ###########################################################################################################################################
 void sliderBrightnessDay(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
   // Serial.print("Slider: ID: ");
   // Serial.print(sender->id);
   // Serial.print(", Value: ");
   // Serial.println(sender->value);
-  preferences.putUInt("intensity_day", (sender->value).toInt());
   intensity_day = sender->value.toInt();
-  update_display();
+  changedvalues = true;
+  updatedevice = true;
 }
 
 
@@ -2143,13 +2181,15 @@ void sliderBrightnessDay(Control* sender, int type) {
 // # GUI: Slider change for LED intensity: NIGHT
 // ###########################################################################################################################################
 void sliderBrightnessNight(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
   // Serial.print("Slider: ID: ");
   // Serial.print(sender->id);
   // Serial.print(", Value: ");
   // Serial.println(sender->value);
-  preferences.putUInt("intensity_night", (sender->value).toInt());
   intensity_night = sender->value.toInt();
-  update_display();
+  changedvalues = true;
+  updatedevice = true;
 }
 
 
@@ -2157,13 +2197,15 @@ void sliderBrightnessNight(Control* sender, int type) {
 // # GUI: Time Day Mode Start
 // ###########################################################################################################################################
 void call_day_time_start(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
   // Serial.print("Text: ID: ");
   // Serial.print(sender->id);
   // Serial.print(", Value: ");
   // Serial.println(sender->value);
-  preferences.putUInt("day_time_start", (sender->value).toInt());
   day_time_start = sender->value.toInt();
-  update_display();
+  changedvalues = true;
+  updatedevice = true;
 }
 
 
@@ -2171,13 +2213,15 @@ void call_day_time_start(Control* sender, int type) {
 // # GUI: Time Day Mode Stop
 // ###########################################################################################################################################
 void call_day_time_stop(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
   // Serial.print("Text: ID: ");
   // Serial.print(sender->id);
   // Serial.print(", Value: ");
   // Serial.println(sender->value);
-  preferences.putUInt("day_time_stop", (sender->value).toInt());
   day_time_stop = sender->value.toInt();
-  update_display();
+  changedvalues = true;
+  updatedevice = true;
 }
 
 
