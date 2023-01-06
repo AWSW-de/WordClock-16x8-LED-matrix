@@ -55,7 +55,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.3.0";
+const char* WORD_CLOCK_VERSION = "V1.3.1";
 
 
 // ###########################################################################################################################################
@@ -77,6 +77,7 @@ int iHour = 0;
 int iMinute = 0;
 int iSecond = 0;
 bool updatedevice = true;
+bool updatenow = false;
 bool updatemode = false;
 bool changedvalues = false;
 int WiFiManFix = 0;
@@ -110,6 +111,7 @@ void setup() {
     ShowIPaddress();               // Display the current IP-address
     configNTPTime();               // NTP time setup
     setupWebInterface();           // Generate the configuration page
+    updatenow = true;              // Update the display 1x after startup
     update_display();              // Update LED display
     handleOTAupdate();             // Start the ESP32 OTA update server
   }
@@ -331,6 +333,7 @@ void setFlashValues() {
   } else {
     ESPUI.print(statusNightModeID, "Night mode not used");
   }
+  updatenow = true;  // Update display now...
 }
 
 
@@ -345,8 +348,6 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
   if (WordClockResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
   switch (type) {
     case B_DOWN:
-      ESPUI.print(statusLabelID, "WORDCLOCK SETTINGS RESET REQUESTED");
-      delay(1000);
       break;
     case B_UP:
       if (WordClockResetCounter == 1) {
@@ -373,7 +374,9 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
         ESP.restart();
       } else {
         Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST");
+        ESPUI.print(statusLabelID, "WORDCLOCK SETTINGS RESET REQUESTED");
         ESPUI.updateButton(sender->id, "! Press button once more to apply settings reset !");
+        delay(1000);
         WordClockResetCounter = WordClockResetCounter + 1;
       }
       break;
@@ -1006,8 +1009,10 @@ int ResetCounter = 0;
 void buttonRestart(Control* sender, int type, void* param) {
   updatedevice = false;
   delay(1000);
-  if (changedvalues == true) setFlashValues();  // Write settings to flash
-  delay(1000);
+  if (changedvalues == true) {
+    setFlashValues();  // Write settings to flash
+    delay(1000);
+  }
   preferences.end();
   if (ResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (ResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
@@ -1020,6 +1025,7 @@ void buttonRestart(Control* sender, int type, void* param) {
         ESP.restart();
       } else {
         Serial.println("Status: Restart request");
+        ESPUI.print(statusLabelID, "RESTART REQUESTED");
         ESPUI.updateButton(sender->id, "! Press button once more to apply restart !");
         ResetCounter = ResetCounter + 1;
       }
@@ -1036,23 +1042,13 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
   updatedevice = false;
   delay(1000);
   if (WIFIResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
-  if (WIFIResetCounter == 0) SetWLAN(strip.Color(255, 0, 0));
   if (WIFIResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
-  if (WIFIResetCounter == 1) SetWLAN(strip.Color(0, 255, 0));
   switch (type) {
     case B_DOWN:
-      if (WIFIResetCounter == 0) {
-        ESPUI.print(statusLabelID, "WIFI SETTINGS RESET REQUESTED");
-        preferences.putUInt("WiFiManFix", 0);  // WiFi Manager Fix Reset
-        delay(1000);
-        preferences.end();
-        delay(1000);
-      }
       break;
     case B_UP:
       if (WIFIResetCounter == 1) {
         Serial.println("Status: WIFI SETTINGS RESET REQUEST EXECUTED");
-        delay(1000);
         WiFi.disconnect();
         delay(1000);
         WiFiManager manager;
@@ -1064,7 +1060,12 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
         delay(1000);
         ESP.restart();
       } else {
+        preferences.putUInt("WiFiManFix", 0);  // WiFi Manager Fix Reset
+        preferences.putUInt("useshowip", useshowip_default);
+        delay(500);
+        preferences.end();
         Serial.println("Status: WIFI SETTINGS RESET REQUEST");
+        ESPUI.print(statusLabelID, "WORDCLOCK WIFI SETTINGS RESET REQUEST");
         ESPUI.updateButton(sender->id, "! Press button once more to apply WiFi reset !");
         WIFIResetCounter = WIFIResetCounter + 1;
       }
@@ -1270,6 +1271,21 @@ void update_display() {
 // # Display hours and minutes text function:
 // ###########################################################################################################################################
 void show_time(int hours, int minutes) {
+  static int lastHourSet = -1;
+  static int lastMinutesSet = -1;
+  if ((lastHourSet == hours && lastMinutesSet == minutes) && updatenow == false) {  // Reduce display updates to new minutes and new config updates
+    return;
+  }
+  if (updatenow = true) Serial.print("Update display now: ");
+  updatenow = false;
+  lastHourSet = hours;
+  lastMinutesSet = minutes;
+  Serial.print(hours);
+  Serial.print(":");
+  Serial.print(minutes);
+  Serial.print(":");
+  Serial.println(iSecond);
+
   // Set background color:
   back_color();
 
@@ -1280,13 +1296,6 @@ void show_time(int hours, int minutes) {
   // Test a special time:
   // iHour = 23;
   // iMinute = 25;
-
-  // Test the complete day time texts:
-  if (testTime == 1) {
-    Serial.print(iHour);
-    Serial.print(":");
-    Serial.println(iMinute);
-  }
 
   // divide minute by 5 to get value for display control
   int minDiv = iMinute / 5;
@@ -1967,7 +1976,7 @@ void WiFiManager1stBootFix() {
   WiFiManFix = preferences.getUInt("WiFiManFix", 0);
   if (WiFiManFix == 0) {
     Serial.println("######################################################################");
-    Serial.println("# ESP restart needed becaouse of WiFi Manager Fix");
+    Serial.println("# ESP restart needed because of WiFi Manager Fix");
     Serial.println("######################################################################");
     SetWLAN(strip.Color(0, 255, 0));
     preferences.putUInt("WiFiManFix", 1);
