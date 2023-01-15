@@ -1,6 +1,8 @@
 // ###########################################################################################################################################
 // #
-// # WordClock code for the printables WordClock 16x16 matrix project: https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023
+// # WordClock code for the 2 printables WordClock 16x16 matrix projects: 
+// # https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1
+// # https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2
 // #
 // # Code by https://github.com/AWSW-de
 // #
@@ -55,7 +57,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.3.2";
+const char* WORD_CLOCK_VERSION = "V1.3.3";
 
 
 // ###########################################################################################################################################
@@ -1733,7 +1735,7 @@ void show_time(int hours, int minutes) {
     }
 
     if (iMinute < 5) {
-      setLED(193, 195, 1);  // UHR
+      setLED(193, 195, 1);  // UUR
       setLED(220, 222, 1);  // 2nd row
     }
   }
@@ -1751,7 +1753,6 @@ void showMinutes(int minutes) {
   // Serial.println(minMod);
 
   // ##################################################### DE:
-
   if (langLEDlayout == 0) {  // DE:
 
     switch (minMod) {
@@ -1799,7 +1800,6 @@ void showMinutes(int minutes) {
   }
 
   // ##################################################### EN:
-
   if (langLEDlayout == 1) {  // EN:
     switch (minMod) {
       case 1:
@@ -1846,7 +1846,6 @@ void showMinutes(int minutes) {
   }
 
   // ##################################################### NL:
-
   if (langLEDlayout == 2) {  // NL:
 
     switch (minMod) {

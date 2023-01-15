@@ -1,12 +1,14 @@
 // ###########################################################################################################################################
 // #
-// # WordClock code for the printables WordClock 16x16 matrix project: https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023
+// # WordClock code for the 2 printables WordClock 16x16 matrix projects: 
+// # https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1
+// # https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2
 // #
 // # Code by https://github.com/AWSW-de
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V1.3.2
+// # Compatible with WordClock version: V1.3.3
 // #
 // ###########################################################################################################################################
 /*
@@ -36,7 +38,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ
 // ###########################################################################################################################################
 // # LED language layout default: !!! SET YOUR DEFAULT LANGUAGE HERE !!!
 // ###########################################################################################################################################
-int langLEDlayout_default = 1;  // LED language layout default (0 = DE; 1 = EN; 2 = NL)
+int langLEDlayout_default = 0;  // LED language layout default (0 = DE; 1 = EN; 2 = NL)
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
