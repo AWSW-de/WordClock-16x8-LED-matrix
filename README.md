@@ -6,7 +6,7 @@ Code for the <a href="https://www.printables.com/de/model/350568-wordclock-16x16
 
 <hr>
 
-Images:
+Images of 2023-V1 with stencil font and 2023-V2 with regular font:
 
 <img src="./Images/IMG_0691.jpg">
 
