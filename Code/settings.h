@@ -8,7 +8,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V1.3.3
+// # Compatible with WordClock version: V1.3.4
 // #
 // ###########################################################################################################################################
 /*

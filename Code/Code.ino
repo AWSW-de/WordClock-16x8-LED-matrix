@@ -1,6 +1,6 @@
 // ###########################################################################################################################################
 // #
-// # WordClock code for the 2 printables WordClock 16x16 matrix projects: 
+// # WordClock code for the 2 printables WordClock 16x16 matrix projects:
 // # https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1
 // # https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2
 // #
@@ -57,7 +57,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.3.3";
+const char* WORD_CLOCK_VERSION = "V1.3.4";
 
 
 // ###########################################################################################################################################
@@ -1042,7 +1042,6 @@ void buttonRestart(Control* sender, int type, void* param) {
 int WIFIResetCounter = 0;
 void buttonWiFiReset(Control* sender, int type, void* param) {
   updatedevice = false;
-  delay(1000);
   if (WIFIResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (WIFIResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
   switch (type) {
@@ -1054,17 +1053,16 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
         WiFi.disconnect();
         delay(1000);
         WiFiManager manager;
-        delay(1000);
         manager.resetSettings();
         Serial.println("####################################################################################################");
         Serial.println("# WIFI SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE WIFI AGAIN... #");
         Serial.println("####################################################################################################");
-        delay(1000);
+        delay(500);
         ESP.restart();
       } else {
-        preferences.putUInt("WiFiManFix", 0);  // WiFi Manager Fix Reset
-        preferences.putUInt("useshowip", useshowip_default);
-        delay(500);
+        preferences.putUInt("WiFiManFix", 0);                 // WiFi Manager Fix Reset
+        preferences.putUInt("useshowip", useshowip_default);  // Show IP-address again
+        delay(100);
         preferences.end();
         Serial.println("Status: WIFI SETTINGS RESET REQUEST");
         ESPUI.print(statusLabelID, "WORDCLOCK WIFI SETTINGS RESET REQUEST");
