@@ -1,6 +1,6 @@
 // ###########################################################################################################################################
 // #
-// # WordClock code for the 2 printables WordClock 16x16 matrix projects: 
+// # WordClock code for the 2 printables WordClock 16x16 matrix projects:
 // # https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1
 // # https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2
 // #
@@ -8,7 +8,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V1.3.4
+// # Compatible with WordClock version: V1.4.0
 // #
 // ###########################################################################################################################################
 /*
@@ -38,7 +38,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ
 // ###########################################################################################################################################
 // # LED language layout default: !!! SET YOUR DEFAULT LANGUAGE HERE !!!
 // ###########################################################################################################################################
-int langLEDlayout_default = 0;  // LED language layout default (0 = DE; 1 = EN; 2 = NL)
+int langLEDlayout_default = 1;  // LED language layout default (0 = DE; 1 = EN; 2 = NL)
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
@@ -61,6 +61,7 @@ int day_time_stop_default = 22;   // Define day mode end --> time after is then 
 #define AP_TIMEOUT 240         // Timeout in seconds for AP / WLAN config
 int useshowip_default = 1;     // Show the current ip at boot
 int usesinglemin_default = 1;  // Show the single minutes
+int RandomColor_default = 0;   // Change text color every minute in random color
 
 
 // ###########################################################################################################################################
@@ -80,7 +81,8 @@ const char* NTPserver = "pool.ntp.org";               // Time server address. Ch
 // ###########################################################################################################################################
 // # Test functions:
 // ###########################################################################################################################################
-int testTime = 0;  // LED time text output test
+int testTime = 0;    // LED time text output test
+int debugtexts = 0;  // Show more debug information in serial monitor
 
 
 // ###########################################################################################################################################
