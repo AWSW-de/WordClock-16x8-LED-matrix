@@ -57,7 +57,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.4.0";
+const char* WORD_CLOCK_VERSION = "V1.5.0";
 
 
 // ###########################################################################################################################################
@@ -158,6 +158,7 @@ void setupWebInterface() {
   if (langLEDlayout == 0) selectLang = "Current layout language: German";
   if (langLEDlayout == 1) selectLang = "Current layout language: English";
   if (langLEDlayout == 2) selectLang = "Current layout language: Dutch";
+  if (langLEDlayout == 3) selectLang = "Current layout language: Swedish";
   ESPUI.button(selectLang, &buttonlangChange, ControlColor::Dark, "Change layout language", (void*)4);
 
 
@@ -412,7 +413,8 @@ void buttonlangChange(Control* sender, int type, void* param) {
         Serial.println("WORDCLOCK LAYOUT LANGUAGE CHANGE EXECUTED");
         if (langLEDlayout == 0) preferences.putUInt("langLEDlayout", 1);  // DE to EN
         if (langLEDlayout == 1) preferences.putUInt("langLEDlayout", 2);  // EN to NL
-        if (langLEDlayout == 2) preferences.putUInt("langLEDlayout", 0);  // NL to DE
+        if (langLEDlayout == 2) preferences.putUInt("langLEDlayout", 3);  // NL to SWE
+        if (langLEDlayout == 3) preferences.putUInt("langLEDlayout", 0);  // SWE to DE
         delay(1000);
         preferences.end();
         Serial.println("##########################################################################");
@@ -1143,6 +1145,11 @@ void ResetTextLEDs(uint32_t color) {
     setLEDcol(252, 252, color);  // 2nd row
   }
 
+  if (langLEDlayout == 3) {    // SWE:
+    setLEDcol(67, 71, color);  // R
+    setLEDcol(88, 92, color);  // 2nd row
+  }
+
   strip.show();
 }
 
@@ -1289,7 +1296,7 @@ void show_time(int hours, int minutes) {
   if ((lastHourSet == hours && lastMinutesSet == minutes) && updatenow == false) {  // Reduce display updates to new minutes and new config updates
     return;
   }
-  
+
   if (updatenow = true) {
     updatenow = false;
     lastHourSet = hours;
@@ -1757,6 +1764,144 @@ void show_time(int hours, int minutes) {
     }
   }
 
+  // ########################################################### SWE:
+  if (langLEDlayout == 3) {  // SWE:
+
+    // KLOCKAN ÄR:
+    setLEDcol(9, 15, colorRGB);
+    setLEDcol(16, 22, colorRGB);  // 2nd row
+    setLEDcol(5, 6, colorRGB);
+    setLEDcol(25, 26, colorRGB);  // 2nd row
+
+    // FEM: (Minuten)
+    if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
+      setLEDcol(64, 66, colorRGB);
+      setLEDcol(93, 95, colorRGB);  // 2nd row
+    }
+    // KVART:
+    if ((minDiv == 3) || (minDiv == 9)) {
+      setLEDcol(36, 40, colorRGB);
+      setLEDcol(55, 59, colorRGB);  // 2nd row
+    }
+    // TIO: (Minuten)
+    if ((minDiv == 2) || (minDiv == 10)) {
+      setLEDcol(72, 74, colorRGB);
+      setLEDcol(85, 87, colorRGB);  // 2nd row
+    }
+    // TJUGO:
+    if ((minDiv == 4) || (minDiv == 8)) {
+      setLEDcol(75, 79, colorRGB);
+      setLEDcol(80, 84, colorRGB);  // 2nd row
+    }
+    // ÖVER:
+    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 7)) {
+      setLEDcol(108, 111, colorRGB);
+      setLEDcol(112, 115, colorRGB);  // 2nd row
+    }
+    // I:
+    if ((minDiv == 5) || (minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
+      setLEDcol(97, 97, colorRGB);
+      setLEDcol(126, 126, colorRGB);  // 2nd row
+    }
+    // HALV:
+    if ((minDiv == 5) || (minDiv == 6) || (minDiv == 7)) {
+      setLEDcol(140, 143, colorRGB);
+      setLEDcol(144, 147, colorRGB);  // 2nd row
+    }
+
+
+    //set hour from 1 to 12 (at noon, or midnight)
+    int xHour = (iHour % 12);
+    if (xHour == 0)
+      xHour = 12;
+    // at minute 25 hour needs to be counted up:
+    // fuenf vor halb 2 = 13:25
+    if (iMinute >= 25) {
+      if (xHour == 12)
+        xHour = 1;
+      else
+        xHour++;
+    }
+
+
+    switch (xHour) {
+      case 1:
+        {
+          if (xHour == 1) {
+            setLEDcol(170, 172, colorRGB);  // ETT
+            setLEDcol(179, 181, colorRGB);  // 2nd row
+          }
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(160, 162, colorRGB);  // TVÅ
+          setLEDcol(189, 191, colorRGB);  // 2nd row
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(132, 134, colorRGB);  // TRE
+          setLEDcol(153, 155, colorRGB);  // 2nd row
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(197, 200, colorRGB);  // FYRA
+          setLEDcol(218, 218, colorRGB);  // 2nd row
+          break;
+        }
+      case 5:
+        {
+          setLEDcol(194, 196, colorRGB);  // FEM
+          setLEDcol(219, 221, colorRGB);  // 2nd row
+          break;
+        }
+      case 6:
+        {
+          setLEDcol(201, 203, colorRGB);  // SEX
+          setLEDcol(212, 214, colorRGB);  // 2nd row
+          break;
+        }
+      case 7:
+        {
+          setLEDcol(173, 175, colorRGB);  // SJU
+          setLEDcol(176, 178, colorRGB);  // 2nd row
+          break;
+        }
+      case 8:
+        {
+          setLEDcol(128, 131, colorRGB);  // ÅTTA
+          setLEDcol(156, 159, colorRGB);  // 2nd row
+          break;
+        }
+      case 9:
+        {
+          setLEDcol(135, 137, colorRGB);  // NIO
+          setLEDcol(150, 152, colorRGB);  // 2nd row
+          break;
+        }
+      case 10:
+        {
+          setLEDcol(168, 170, colorRGB);  // TIO (Stunden)
+          setLEDcol(181, 183, colorRGB);  // 2nd row
+          break;
+        }
+      case 11:
+        {
+          setLEDcol(204, 207, colorRGB);  // ELVA
+          setLEDcol(208, 211, colorRGB);  // 2nd row
+          break;
+        }
+      case 12:
+        {
+          setLEDcol(163, 166, colorRGB);  // TOLV
+          setLEDcol(185, 188, colorRGB);  // 2nd row
+          break;
+        }
+    }
+  }
+
   strip.show();
 }
 
@@ -1907,6 +2052,53 @@ void showMinutes(int minutes) {
         }
     }
   }
+
+  // ##################################################### SWE:
+  if (langLEDlayout == 3) {  // SWE:
+
+    switch (minMod) {
+      case 1:
+        {
+          setLEDcol(238, 238, colorRGB);  // +
+          setLEDcol(241, 241, colorRGB);  // 2nd row
+          setLEDcol(236, 236, colorRGB);  // 1
+          setLEDcol(243, 243, colorRGB);  // 2nd row
+          setLEDcol(227, 231, colorRGB);  // MINUT
+          setLEDcol(248, 252, colorRGB);  // 2nd row
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(238, 238, colorRGB);  // +
+          setLEDcol(241, 241, colorRGB);  // 2nd row
+          setLEDcol(235, 235, colorRGB);  // 2
+          setLEDcol(244, 244, colorRGB);  // 2nd row
+          setLEDcol(225, 231, colorRGB);  // MINUTER
+          setLEDcol(248, 254, colorRGB);  // 2nd row
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(238, 238, colorRGB);  // +
+          setLEDcol(241, 241, colorRGB);  // 2nd row
+          setLEDcol(234, 234, colorRGB);  // 3
+          setLEDcol(245, 245, colorRGB);  // 2nd row
+          setLEDcol(225, 231, colorRGB);  // MINUTER
+          setLEDcol(248, 254, colorRGB);  // 2nd row
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(238, 238, colorRGB);  // +
+          setLEDcol(241, 241, colorRGB);  // 2nd row
+          setLEDcol(233, 233, colorRGB);  // 4
+          setLEDcol(246, 246, colorRGB);  // 2nd row
+          setLEDcol(225, 231, colorRGB);  // MINUTER
+          setLEDcol(248, 254, colorRGB);  // 2nd row
+          break;
+        }
+    }
+  }
 }
 
 
@@ -1951,6 +2143,15 @@ void SetWLAN(uint32_t color) {
       strip.setPixelColor(i, color);
     }
     for (uint16_t i = 81; i < 85; i++) {  // 2nd row
+      strip.setPixelColor(i, color);
+    }
+  }
+
+  if (langLEDlayout == 3) {  // SWE:
+    for (uint16_t i = 0; i < 4; i++) {
+      strip.setPixelColor(i, color);
+    }
+    for (uint16_t i = 28; i < 32; i++) {  // 2nd row
       strip.setPixelColor(i, color);
     }
   }
@@ -2063,6 +2264,11 @@ void initTime(String timezone) {
       setLEDcol(87, 90, strip.Color(255, 0, 0));  // 2nd row
     }
 
+    if (langLEDlayout == 3) {  // SWE:
+      setLEDcol(96, 98, strip.Color(255, 0, 0));
+      setLEDcol(125, 127, strip.Color(255, 0, 0));  // 2nd row
+    }
+
     strip.show();
     delay(1000);
     ESP.restart();
@@ -2085,6 +2291,11 @@ void initTime(String timezone) {
     if (langLEDlayout == 2) {  // NL:
       setLEDcol(69, 72, strip.Color(0, 255, 0));
       setLEDcol(87, 90, strip.Color(0, 255, 0));  // 2nd row
+    }
+
+    if (langLEDlayout == 3) {  // SWE:
+      setLEDcol(96, 98, strip.Color(0, 255, 0));
+      setLEDcol(125, 127, strip.Color(0, 255, 0));  // 2nd row
     }
 
     strip.show();
