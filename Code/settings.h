@@ -45,6 +45,9 @@ int langLEDlayout_default = 0;  // LED language layout default (0 = DE; 1 = EN; 
 // ###########################################################################################################################################
 // # LED defaults:
 // ###########################################################################################################################################
+int redVal_back_default = 0;      // Default background color RED
+int greenVal_back_default = 255;  // Default background color GREEN
+int blueVal_back_default = 255;   // Default background color BLUE
 int redVal_time_default = 0;      // Default time color RED
 int greenVal_time_default = 255;  // Default time color GREEN
 int blueVal_time_default = 255;   // Default time color BLUE
@@ -53,7 +56,7 @@ int intensity_night_default = 5;  // LED intensity (0..255) in day mode   - Impo
 int usenightmode_default = 1;     // Use the night mode to reduce LED intensity during set times
 int day_time_start_default = 7;   // Define day mode start --> time before is then night mode if used
 int day_time_stop_default = 22;   // Define day mode end --> time after is then night mode if used
-
+int Display_default = 1;   // Display On/Off
 
 // ###########################################################################################################################################
 // # Various default settings:
