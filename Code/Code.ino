@@ -57,13 +57,14 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.5.0";
+const char* WORD_CLOCK_VERSION = "V1.6.0";
 
 
 // ###########################################################################################################################################
 // # Internal web server settings:
 // ###########################################################################################################################################
 AsyncWebServer server(80);  // Web server for config
+WebServer ewserver(8080);  
 WebServer updserver(2022);  // Web server for OTA updates
 const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 44, 1);
@@ -84,7 +85,9 @@ bool updatemode = false;
 bool changedvalues = false;
 int WiFiManFix = 0;
 String iStartTime = "Failed to obtain time on startup... Please restart...";
+int redVal_back, greenVal_back, blueVal_back;
 int redVal_time, greenVal_time, blueVal_time;
+int Display;
 int intensity, intensity_day, intensity_night;
 int usenightmode, day_time_start, day_time_stop, statusNightMode;
 int useshowip, usesinglemin;
@@ -117,6 +120,7 @@ void setup() {
     updatenow = true;              // Update the display 1x after startup
     update_display();              // Update LED display
     handleOTAupdate();             // Start the ESP32 OTA update server
+    handleExtraWords();
   }
   Serial.println("######################################################################");
   Serial.println("# WordClock startup finished...");
@@ -134,6 +138,7 @@ void loop() {
     update_display();                             // Update display (1x per minute regulary)
   }
   dnsServer.processNextRequest();                    // Update web server
+  ewserver.handleClient();                          // Extra words web server access update
   if (updatemode == true) updserver.handleClient();  // ESP32 OTA updates
 }
 
@@ -173,6 +178,13 @@ void setupWebInterface() {
   uint16_t text_colour_time;
   text_colour_time = ESPUI.text("Time", colCallTIME, ControlColor::Dark, hex_time);
   ESPUI.setInputType(text_colour_time, "color");
+
+  // Background color selector:
+  char hex_back[7] = { 0 };
+  sprintf(hex_back, "#%02X%02X%02X", redVal_back, greenVal_back, blueVal_back);
+  uint16_t text_colour_background;
+  text_colour_background = ESPUI.text("Background", colCallBACK, ControlColor::Dark, hex_back);
+  ESPUI.setInputType(text_colour_background, "color");
 
   // Intensity DAY slider selector: !!! DEFAULT LIMITED TO 128 of 255 !!!
   ESPUI.slider("Brightness during the day", &sliderBrightnessDay, ControlColor::Dark, intensity_day, 0, LEDintensityLIMIT);
@@ -302,6 +314,9 @@ void getFlashValues() {
   redVal_time = preferences.getUInt("redVal_time", redVal_time_default);
   greenVal_time = preferences.getUInt("greenVal_time", greenVal_time_default);
   blueVal_time = preferences.getUInt("blueVal_time", blueVal_time_default);
+  redVal_back = preferences.getUInt("redVal_back", redVal_back_default);
+  greenVal_back = preferences.getUInt("greenVal_back", greenVal_back_default);
+  blueVal_back = preferences.getUInt("blueVal_back", blueVal_back_default);
   intensity_day = preferences.getUInt("intensity_day", intensity_day_default);
   intensity_night = preferences.getUInt("intensity_night", intensity_night_default);
   usenightmode = preferences.getUInt("usenightmode", usenightmode_default);
@@ -310,6 +325,7 @@ void getFlashValues() {
   useshowip = preferences.getUInt("useshowip", useshowip_default);
   usesinglemin = preferences.getUInt("usesinglemin", usesinglemin_default);
   RandomColor = preferences.getUInt("RandomColor", RandomColor_default);
+  Display = preferences.getUInt("Display", Display_default);
   if (debugtexts == 1) Serial.println("Read settings from flash: END");
 }
 
@@ -324,6 +340,9 @@ void setFlashValues() {
   preferences.putUInt("redVal_time", redVal_time);
   preferences.putUInt("greenVal_time", greenVal_time);
   preferences.putUInt("blueVal_time", blueVal_time);
+  preferences.putUInt("redVal_back", redVal_back);
+  preferences.putUInt("greenVal_back", greenVal_back);
+  preferences.putUInt("blueVal_back", blueVal_back);
   preferences.putUInt("intensity_day", intensity_day);
   preferences.putUInt("intensity_night", intensity_night);
   preferences.putUInt("usenightmode", usenightmode);
@@ -332,6 +351,7 @@ void setFlashValues() {
   preferences.putUInt("useshowip", useshowip);
   preferences.putUInt("usesinglemin", usesinglemin);
   preferences.putUInt("RandomColor", RandomColor);
+  preferences.putUInt("Display", Display);
   if (debugtexts == 1) Serial.println("Write settings to flash: END");
   if (usenightmode == 1) {
     if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
@@ -367,6 +387,9 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
         preferences.putUInt("redVal_time", redVal_time_default);
         preferences.putUInt("greenVal_time", greenVal_time_default);
         preferences.putUInt("blueVal_time", blueVal_time_default);
+        preferences.putUInt("redVal_back", redVal_back_default);
+        preferences.putUInt("greenVal_back", greenVal_back_default);
+        preferences.putUInt("blueVal_back", blueVal_back_default);
         preferences.putUInt("intensity_day", intensity_day_default);
         preferences.putUInt("intensity_night", intensity_night_default);
         preferences.putUInt("useshowip", useshowip_default);
@@ -375,8 +398,10 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
         preferences.putUInt("day_time_stop", day_time_stop_default);
         preferences.putUInt("usesinglemin", usesinglemin_default);
         preferences.putUInt("RandomColor", RandomColor_default);
+        preferences.putUInt("Display", Display_default);
         delay(1000);
         preferences.end();
+        back_color();
         Serial.println("####################################################################################################");
         Serial.println("# WORDCLOCK SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE AGAIN... #");
         Serial.println("####################################################################################################");
@@ -1317,6 +1342,7 @@ void show_time(int hours, int minutes) {
   // Static text color or random color mode:
   if (RandomColor == 0) colorRGB = strip.Color(redVal_time, greenVal_time, blueVal_time);
   if (RandomColor == 1) colorRGB = strip.Color(random(255), random(255), random(255));
+  if (Display == 0) colorRGB = strip.Color(0, 0, 0);
 
   // Display time:
   iHour = hours;
@@ -2106,7 +2132,15 @@ void showMinutes(int minutes) {
 // # Background color function: SET ALL LEDs OFF
 // ###########################################################################################################################################
 void back_color() {
-  uint32_t c0 = strip.Color(0, 0, 0);
+  uint32_t c0;
+
+   if (Display == 0) {
+    c0 = strip.Color(0, 0, 0);
+   } else {
+    c0 = strip.Color(redVal_back, greenVal_back, blueVal_back);
+
+   }
+  
   for (int i = 0; i < NUMPIXELS; i++) {
     strip.setPixelColor(i, c0);
   }
@@ -2363,7 +2397,30 @@ void getRGBTIME(String hexvalue) {
   changedvalues = true;
   updatedevice = true;
 }
-
+// ###########################################################################################################################################
+// # GUI: Convert hex color value to RGB int values - BACKGROUND:
+// ###########################################################################################################################################
+void getRGBBACK(String hexvalue) {
+  updatedevice = false;
+  delay(1000);
+  hexvalue.toUpperCase();
+  char c[7];
+  hexvalue.toCharArray(c, 8);
+  int red = hexcolorToInt(c[1], c[2]);
+  int green = hexcolorToInt(c[3], c[4]);
+  int blue = hexcolorToInt(c[5], c[6]);
+  // Serial.print("red: ");
+  // Serial.println(red);
+  // Serial.print("green: ");
+  // Serial.println(green);
+  // Serial.print("blue: ");
+  // Serial.println(blue);
+  redVal_back = red;
+  greenVal_back = green;
+  blueVal_back = blue;
+  changedvalues = true;
+  updatedevice = true;
+}
 
 // ###########################################################################################################################################
 // # GUI: Convert hex color value to RGB int values - helper function:
@@ -2383,6 +2440,16 @@ int hexcolorToInt(char upper, char lower) {
 // ###########################################################################################################################################
 void colCallTIME(Control* sender, int type) {
   getRGBTIME(sender->value);
+}
+// ###########################################################################################################################################
+// # GUI: Color change for background color:
+// ###########################################################################################################################################
+void colCallBACK(Control* sender, int type) {
+  // Serial.print("BACK Col: ID: ");
+  // Serial.print(sender->id);
+  // Serial.print(", Value: ");
+  // Serial.println(sender->value);
+  getRGBBACK(sender->value);
 }
 
 
@@ -2570,6 +2637,134 @@ void handleOTAupdate() {
       }
     });
   updserver.begin();
+}
+
+// ###########################################################################################################################################
+// # Extra Words web update server:
+// ###########################################################################################################################################
+void handleExtraWords() {
+  updatedevice = false;
+  delay(1000);
+
+  // OTA update server pages urls:
+  ewserver.on("/", HTTP_GET, []() {
+    ewserver.sendHeader("Connection", "close");
+    ewserver.send(200, "text/html", "WordClock web server on port 8080 is up...Display | DisplayOn | DisplayOff | ColorWipe | Rainbow | TheaterChase | PulseWhite");
+  });
+ // ################################################################## DE:
+
+    ewserver.on("/Display", HTTP_GET, []() {
+      ewserver.sendHeader("Connection", "close");
+      if (Display == 0) {
+        Display = 1;
+        ewserver.send(200, "text/html", "Display text set active");
+      } else {
+        Display = 0;
+        ewserver.send(200, "text/html", "Display text set inactive");
+      }
+      changedvalues = true;
+    });
+
+   ewserver.on("/DisplayOn", HTTP_GET, []() {
+      ewserver.sendHeader("Connection", "close");
+        Display = 1;
+        ewserver.send(200, "text/html", "Display text set active");
+      changedvalues = true;
+    });
+
+    ewserver.on("/DisplayOff", HTTP_GET, []() {
+      ewserver.sendHeader("Connection", "close");
+        Display = 0;
+        ewserver.send(200, "text/html", "Display text set inactive");
+      changedvalues = true;
+    });
+
+    ewserver.on("/ColorWipe", HTTP_GET, []() {
+      ewserver.sendHeader("Connection", "close");
+        ewserver.send(200, "text/html", "ColorWipe");
+        colorWipe(strip.Color(  0, 255,   0), 5);
+        changedvalues = true;
+    });
+
+   ewserver.on("/Rainbow", HTTP_GET, []() {
+      ewserver.sendHeader("Connection", "close");
+        ewserver.send(200, "text/html", "RainBow");
+        rainbow(10);
+        changedvalues = true;
+    });
+
+    ewserver.on("/TheaterChase", HTTP_GET, []() {
+      ewserver.sendHeader("Connection", "close");
+        ewserver.send(200, "text/html", "TheaterChase");
+        theaterChase(strip.Color(redVal_time, greenVal_time, blueVal_time), 50); // Blue
+        changedvalues = true;
+    });
+
+        ewserver.on("/PulseWhite", HTTP_GET, []() {
+      ewserver.sendHeader("Connection", "close");
+        ewserver.send(200, "text/html", "PulseWhite");
+        pulseWhite(1);
+        changedvalues = true;
+    });
+
+  ewserver.begin();
+  updatedevice = true;
+}
+
+void colorWipe(uint32_t color, int wait) {
+   updatedevice = false;
+  for(int i=0; i<strip.numPixels(); i++) { // For each pixel in strip...
+    strip.setPixelColor(i, color);         //  Set pixel's color (in RAM)
+    strip.show();                          //  Update strip to match
+    delay(wait);                           //  Pause for a moment
+  }
+    updatedevice = true;
+}
+
+void rainbow(uint8_t wait) {
+   updatedevice = false;
+  for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256) {
+        strip.rainbow(firstPixelHue);
+      strip.show(); // Update strip with new contents
+    delay(wait);  // Pause for a moment
+  }
+  updatedevice = true;
+}
+
+void theaterChase(uint32_t c, uint8_t wait) {
+  updatedevice = false;
+  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+    for (int q=0; q < 3; q++) {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, c);    //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
+      }
+    }
+  }
+ updatedevice = true;
+}
+
+void pulseWhite(uint8_t wait) {
+ updatedevice = false;
+  for(int j=0; j<256; j++) { // Ramp up from 0 to 255
+    // Fill entire strip with white at gamma-corrected brightness level 'j':
+    strip.fill(strip.Color(j, j, j, strip.gamma8(j)));
+    strip.show();
+    delay(wait);
+  }
+
+  for(int j=255; j>=0; j--) { // Ramp down from 255 to 0
+    strip.fill(strip.Color(j, j, j, strip.gamma8(j)));
+    strip.show();
+    delay(wait);
+  }
+   updatedevice = true;
 }
 
 
