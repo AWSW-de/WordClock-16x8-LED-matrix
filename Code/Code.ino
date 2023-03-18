@@ -57,7 +57,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.8.0";
+const char* WORD_CLOCK_VERSION = "V1.8.1";
 
 
 // ###########################################################################################################################################
@@ -1302,15 +1302,19 @@ void update_display() {
   if (testTime == 0) {  // Show the current time:
     show_time(iHour, iMinute);
   } else {  // TEST THE DISPLAY TIME OUTPUT:
-    strip.setBrightness(33);
-    for (int i = 0; i <= 12; i++) {  // 12 hours only:
+    strip.setBrightness(5);
+    for (int i = 1; i <= 12; i++) {  // 12 hours only:
       show_time(i, 0);
       delay(1000);
     }
-    for (int i = 0; i <= 3; i++) {  // Hours 0 to 3 with all minute texts:
+    for (int i = 0; i <= 55; i += 5) {  // 5 minutes steps only:
+      show_time(9, i);
+      delay(1000);
+    }
+    for (int i = 9; i < 10; i++) {  // Hours 0 to 3 with all minute texts:
       for (int y = 0; y < 60; y++) {
         show_time(i, y);
-        delay(250);
+        delay(10);
       }
     }
   }
@@ -1355,7 +1359,7 @@ void show_time(int hours, int minutes) {
 
   // Test a special time:
   //  iHour = 9;
-  //  iMinute = 55;
+  //  iMinute = 45;
 
   // divide minute by 5 to get value for display control
   int minDiv = iMinute / 5;
@@ -2264,14 +2268,9 @@ void show_time(int hours, int minutes) {
     setLEDcol(24, 27, colorRGB);  // 2nd row
 
     // FÜÜF: (Minuten)
-    if ((minDiv == 1) || (minDiv == 7) || (minDiv == 11)) {
+    if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
       setLEDcol(44, 47, colorRGB);
       setLEDcol(48, 51, colorRGB);  // 2nd row
-    }
-    // FÜÜFE: (Minuten) x:25
-    if (minDiv == 5) {
-      setLEDcol(43, 47, colorRGB);
-      setLEDcol(48, 52, colorRGB);  // 2nd row
     }
     // VIERTEL:
     if ((minDiv == 3) || (minDiv == 9)) {
@@ -2283,35 +2282,35 @@ void show_time(int hours, int minutes) {
       setLEDcol(34, 36, colorRGB);
       setLEDcol(59, 61, colorRGB);  // 2nd row
     }
-    // ZWÄNZGT:
-    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 8)) {
-      setLEDcol(64, 70, colorRGB);
-      setLEDcol(89, 95, colorRGB);  // 2nd row
+    // ZWÄNZG:
+    if ((minDiv == 4) || (minDiv == 8)) {
+      setLEDcol(65, 70, colorRGB);
+      setLEDcol(89, 94, colorRGB);  // 2nd row
     }
     // AB:
-    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 5) || (minDiv == 7)) {
+    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 7)) {
       setLEDcol(110, 111, colorRGB);
       setLEDcol(112, 113, colorRGB);  // 2nd row
     }
     // VOR:
-    if ((minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
-      setLEDcol(101, 103, colorRGB);
-      setLEDcol(120, 122, colorRGB);  // 2nd row
+    if ((minDiv == 5) || (minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
+      setLEDcol(107, 109, colorRGB);
+      setLEDcol(114, 116, colorRGB);  // 2nd row
     }
     // HALBI:
-    if ((minDiv == 6) || (minDiv == 7)) {
-      setLEDcol(104, 108, colorRGB);
-      setLEDcol(115, 119, colorRGB);  // 2nd row
+    if ((minDiv == 5) || (minDiv == 6) || (minDiv == 7)) {
+      setLEDcol(101, 105, colorRGB);
+      setLEDcol(118, 122, colorRGB);  // 2nd row
     }
 
 
-    //set hour from 1 to 12 (at noon, or midnight)
+    // set hour from 1 to 12 (at noon, or midnight)
     int xHour = (iHour % 12);
     if (xHour == 0)
       xHour = 12;
-    // at minute 30 hour needs to be counted up:
-    // fuenf vor halb 2 = 13:30
-    if (iMinute >= 30) {
+    // at minute 25 hour needs to be counted up:
+    // fuenf vor halb 2 = 13:25
+    if (iMinute >= 25) {
       if (xHour == 12)
         xHour = 1;
       else
