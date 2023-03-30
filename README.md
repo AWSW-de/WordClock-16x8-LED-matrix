@@ -6,7 +6,7 @@ Code for the <a href="https://www.printables.com/de/model/350568-wordclock-16x16
 
 Both designs are available in German, English, Dutch, Swedish, Italian, French and Swiss German. Happy printing =)
 
-Setup video intructions available for <a href="https://www.youtube.com/watch?v=BrVKY1sfZgI">Microsft Windows 10/11</a> and <a href="https://www.youtube.com/watch?v=GptDFKhga0k">Apple macOS</a>
+Setup video intructions available for <a href="https://www.youtube.com/watch?v=BrVKY1sfZgI">Microsoft Windows 10/11</a> and <a href="https://www.youtube.com/watch?v=GptDFKhga0k">Apple macOS</a>
 
 <hr>
 
