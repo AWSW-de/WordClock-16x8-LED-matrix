@@ -57,7 +57,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.8.1";
+const char* WORD_CLOCK_VERSION = "V1.9.0";
 
 
 // ###########################################################################################################################################
@@ -88,7 +88,7 @@ int redVal_time, greenVal_time, blueVal_time;
 int intensity, intensity_day, intensity_night;
 int usenightmode, day_time_start, day_time_stop, statusNightMode;
 int useshowip, usesinglemin;
-int statusLabelID, statusNightModeID;
+int statusLabelID, statusNightModeID, statusLanguageID;
 char* selectLang;
 int RandomColor;
 
@@ -146,6 +146,7 @@ void loop() {
 void setupWebInterface() {
   dnsServer.start(DNS_PORT, "*", apIP);
 
+
   // Section General:
   // ################
   ESPUI.separator("General:");
@@ -155,16 +156,6 @@ void setupWebInterface() {
 
   // WordClock version:
   ESPUI.label("Version", ControlColor::None, WORD_CLOCK_VERSION);
-
-  // Set layout language:
-  if (langLEDlayout == 0) selectLang = "Current layout language: German";
-  if (langLEDlayout == 1) selectLang = "Current layout language: English";
-  if (langLEDlayout == 2) selectLang = "Current layout language: Dutch";
-  if (langLEDlayout == 3) selectLang = "Current layout language: Swedish";
-  if (langLEDlayout == 4) selectLang = "Current layout language: Italian";
-  if (langLEDlayout == 5) selectLang = "Current layout language: French";
-  if (langLEDlayout == 6) selectLang = "Current layout language: Swiss German";
-  ESPUI.button(selectLang, &buttonlangChange, ControlColor::Dark, "Change layout language", (void*)4);
 
 
 
@@ -268,6 +259,31 @@ void setupWebInterface() {
 
 
 
+  // Section Language:
+  // #################
+  ESPUI.separator("Language:");
+
+  // Set layout language:
+  if (langLEDlayout == 0) selectLang = "German";
+  if (langLEDlayout == 1) selectLang = "English";
+  if (langLEDlayout == 2) selectLang = "Dutch";
+  if (langLEDlayout == 3) selectLang = "Swedish";
+  if (langLEDlayout == 4) selectLang = "Italian";
+  if (langLEDlayout == 5) selectLang = "French";
+  if (langLEDlayout == 6) selectLang = "German";
+  if (langLEDlayout == 7) selectLang = "Chinese";
+
+  // Language overview:
+  ESPUI.addControl(ControlType::Label, "Available languages", "<center><table border='3' class='center' width='100%'><tr><th>Value:</th><th>Language:</th><th>Value:</th><th>Language:</th></tr><tr align='center'><td>0</td><td>German</td><td>4</td><td>Italian</td></tr><tr align='center'><td>1</td><td>English</td><td>5</td><td>French</td></tr><tr align='center'><td>2</td><td>Dutch</td><td>6</td><td>Swiss German</td></tr><tr align='center'><td>3</td><td>Swedish</td><td>7</td><td>Chinese</td></tr></table>", ControlColor::Dark, Control::noParent, 0);
+
+  // Change language:
+  ESPUI.number("Select your language", call_langauge_select, ControlColor::Dark, langLEDlayout, 0, 7);
+
+  // Current language:
+  statusLanguageID = ESPUI.label("Current layout language", ControlColor::Dark, selectLang);
+
+
+
   // Section Maintenance:
   // ####################
   ESPUI.separator("Maintenance:");
@@ -285,8 +301,9 @@ void setupWebInterface() {
 
   // Update night mode status text on startup:
   if (usenightmode == 1) {
-    if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
+    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
       ESPUI.print(statusNightModeID, "Day time");
+      if ((iHour == 0) && (day_time_stop == 23)) ESPUI.print(statusNightModeID, "Night time");  // Special function if day_time_stop set to 23 and time is 24, so 0...
     } else {
       ESPUI.print(statusNightModeID, "Night time");
     }
@@ -339,8 +356,9 @@ void setFlashValues() {
   preferences.putUInt("RandomColor", RandomColor);
   if (debugtexts == 1) Serial.println("Write settings to flash: END");
   if (usenightmode == 1) {
-    if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
+    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
       ESPUI.print(statusNightModeID, "Day time");
+      if ((iHour == 0) && (day_time_stop == 23)) ESPUI.print(statusNightModeID, "Night time");  // Special function if day_time_stop set to 23 and time is 24, so 0...
     } else {
       ESPUI.print(statusNightModeID, "Night time");
     }
@@ -400,43 +418,24 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
 
 
 // ###########################################################################################################################################
-// # GUI: Change LED layout language:
+// # GUI: Language selection
 // ###########################################################################################################################################
-int langChangeCounter = 0;
-void buttonlangChange(Control* sender, int type, void* param) {
+void call_langauge_select(Control* sender, int type) {
   updatedevice = false;
   delay(1000);
-  if (langChangeCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
-  if (langChangeCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
-  switch (type) {
-    case B_DOWN:
-      ESPUI.print(statusLabelID, "WORDCLOCK LAYOUT LANGUAGE CHANGE REQUESTED");
-      delay(1000);
-      break;
-    case B_UP:
-      if (langChangeCounter == 1) {
-        Serial.println("WORDCLOCK LAYOUT LANGUAGE CHANGE EXECUTED");
-        if (langLEDlayout == 0) preferences.putUInt("langLEDlayout", 1);  // DE to EN
-        if (langLEDlayout == 1) preferences.putUInt("langLEDlayout", 2);  // EN to NL
-        if (langLEDlayout == 2) preferences.putUInt("langLEDlayout", 3);  // NL to SWE
-        if (langLEDlayout == 3) preferences.putUInt("langLEDlayout", 4);  // SWE to IT
-        if (langLEDlayout == 4) preferences.putUInt("langLEDlayout", 5);  // IT to FR
-        if (langLEDlayout == 5) preferences.putUInt("langLEDlayout", 6);  // FR to GSW
-        if (langLEDlayout == 6) preferences.putUInt("langLEDlayout", 0);  // GSW to DE
-        delay(1000);
-        preferences.end();
-        Serial.println("##########################################################################");
-        Serial.println("# WORDCLOCK LAYOUT LANGUAGE WAS CHANGED... WORDCLOCK WILL NOW RESTART... #");
-        Serial.println("##########################################################################");
-        delay(1000);
-        ESP.restart();
-      } else {
-        Serial.println("WORDCLOCK LAYOUT LANGUAGE CHANGE REQUESTED");
-        ESPUI.updateButton(sender->id, "! Press button once more to apply the language change and restart !");
-        langChangeCounter = langChangeCounter + 1;
-      }
-      break;
-  }
+  langLEDlayout = sender->value.toInt();
+  // Set layout language text in gui:
+  if (langLEDlayout == 0) selectLang = "German";
+  if (langLEDlayout == 1) selectLang = "English";
+  if (langLEDlayout == 2) selectLang = "Dutch";
+  if (langLEDlayout == 3) selectLang = "Swedish";
+  if (langLEDlayout == 4) selectLang = "Italian";
+  if (langLEDlayout == 5) selectLang = "French";
+  if (langLEDlayout == 6) selectLang = "Swiss German";
+  if (langLEDlayout == 7) selectLang = "Chinese";
+  ESPUI.print(statusLanguageID, selectLang);
+  changedvalues = true;
+  updatedevice = true;
 }
 
 
@@ -1181,6 +1180,11 @@ void ResetTextLEDs(uint32_t color) {
     setLEDcol(16, 20, color);  // 2nd row
   }
 
+  if (langLEDlayout == 7) {    // CN:
+    setLEDcol(38, 39, color);  // RESET 重置
+    setLEDcol(56, 57, color);  // 2nd row
+  }
+
   strip.show();
 }
 
@@ -1209,8 +1213,9 @@ void switchNightMode(Control* sender, int value) {
   switch (value) {
     case S_ACTIVE:
       usenightmode = 1;
-      if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
+      if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
         intensity = intensity_day;
+        if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
       } else {
         intensity = intensity_night;
       }
@@ -1288,17 +1293,6 @@ void switchShowIP(Control* sender, int value) {
 void update_display() {
   if (debugtexts == 1) Serial.println("Time: " + iStartTime);
 
-  if (usenightmode == 1) {
-    if ((iHour <= day_time_stop) && (iHour >= day_time_start)) {
-      intensity = intensity_day;
-    } else {
-      intensity = intensity_night;
-    }
-  } else {
-    intensity = intensity_day;
-  }
-  strip.setBrightness(intensity);
-
   if (testTime == 0) {  // Show the current time:
     show_time(iHour, iMinute);
   } else {  // TEST THE DISPLAY TIME OUTPUT:
@@ -1358,8 +1352,8 @@ void show_time(int hours, int minutes) {
   iMinute = minutes;
 
   // Test a special time:
-  //  iHour = 9;
-  //  iMinute = 45;
+  // iHour = 23;
+  // iMinute = 3;
 
   // divide minute by 5 to get value for display control
   int minDiv = iMinute / 5;
@@ -2394,6 +2388,187 @@ void show_time(int hours, int minutes) {
     }
   }
 
+
+  // ########################################################### CN:
+  if (langLEDlayout == 7) {  // CN:
+
+    // IT IS: 现在 时间
+    setLEDcol(44, 45, colorRGB);
+    setLEDcol(50, 51, colorRGB);  // 2nd row
+    setLEDcol(40, 41, colorRGB);
+    setLEDcol(54, 55, colorRGB);  // 2nd row
+
+    // 零五分                         // x:05
+    if ((minDiv == 1)) {
+      setLEDcol(101, 103, colorRGB);
+      setLEDcol(120, 122, colorRGB);  // 2nd row
+    }
+    // 十分                         // x:10
+    if ((minDiv == 2)) {
+      setLEDcol(98, 99, colorRGB);
+      setLEDcol(124, 125, colorRGB);  // 2nd row
+    }
+    // 十五分                         // x:15
+    if ((minDiv == 3)) {
+      setLEDcol(138, 140, colorRGB);
+      setLEDcol(147, 149, colorRGB);  // 2nd row
+    }
+    // 二十分                         // x:20
+    if ((minDiv == 4)) {
+      setLEDcol(98, 100, colorRGB);
+      setLEDcol(123, 125, colorRGB);  // 2nd row
+    }
+    // 二十五分                         // x:25
+    if ((minDiv == 5)) {
+      setLEDcol(138, 141, colorRGB);
+      setLEDcol(146, 149, colorRGB);  // 2nd row
+    }
+    // 三十分                         // x:30
+    if ((minDiv == 6)) {
+      setLEDcol(135, 137, colorRGB);
+      setLEDcol(150, 152, colorRGB);  // 2nd row
+    }
+    // 三十五分                         // x:35
+    if ((minDiv == 7)) {
+      setLEDcol(170, 173, colorRGB);
+      setLEDcol(178, 181, colorRGB);  // 2nd row
+    }
+    // 四十分                         // x:40
+    if ((minDiv == 8)) {
+      setLEDcol(132, 134, colorRGB);
+      setLEDcol(153, 155, colorRGB);  // 2nd row
+    }
+    // 四十五分                         // x:45
+    if ((minDiv == 9)) {
+      setLEDcol(166, 169, colorRGB);
+      setLEDcol(182, 185, colorRGB);  // 2nd row
+    }
+    // 五十分                         // x:50
+    if ((minDiv == 10)) {
+      setLEDcol(163, 165, colorRGB);
+      setLEDcol(186, 188, colorRGB);  // 2nd row
+    }
+    // 五十五分                         // x:55
+    if ((minDiv == 11)) {
+      setLEDcol(202, 205, colorRGB);
+      setLEDcol(210, 213, colorRGB);  // 2nd row
+    }
+
+    //set hour from 1 to 12 (at noon, or midnight)
+    int xHour = (iHour % 12);
+    if (xHour == 0) {
+      xHour = 12;
+    }
+
+
+    switch (xHour) {
+      case 1:
+        {
+          setLEDcol(75, 76, colorRGB);  // 一点
+          setLEDcol(83, 84, colorRGB);  // 2nd row
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(72, 73, colorRGB);  // 二点
+          setLEDcol(86, 87, colorRGB);  // 2nd row
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(36, 37, colorRGB);  // 三点
+          setLEDcol(58, 59, colorRGB);  // 2nd row
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(34, 35, colorRGB);  // 四点
+          setLEDcol(60, 61, colorRGB);  // 2nd row
+          break;
+        }
+      case 5:
+        {
+          setLEDcol(70, 71, colorRGB);  // 五点
+          setLEDcol(88, 89, colorRGB);  // 2nd row
+          break;
+        }
+      case 6:
+        {
+          setLEDcol(68, 69, colorRGB);  // 六点
+          setLEDcol(90, 91, colorRGB);  // 2nd row
+          break;
+        }
+      case 7:
+        {
+          setLEDcol(66, 67, colorRGB);  // 七点
+          setLEDcol(92, 93, colorRGB);  // 2nd row
+          break;
+        }
+      case 8:
+        {
+          setLEDcol(108, 109, colorRGB);  // 八点
+          setLEDcol(114, 115, colorRGB);  // 2nd row
+          break;
+        }
+      case 9:
+        {
+          setLEDcol(106, 107, colorRGB);  // 九点
+          setLEDcol(116, 117, colorRGB);  // 2nd row
+          break;
+        }
+      case 10:
+        {
+          setLEDcol(104, 105, colorRGB);  // 十点
+          setLEDcol(118, 119, colorRGB);  // 2nd row
+          break;
+        }
+      case 11:
+        {
+          setLEDcol(75, 77, colorRGB);  // 十一点
+          setLEDcol(82, 84, colorRGB);  // 2nd row
+          break;
+        }
+      case 12:
+        {
+          setLEDcol(72, 74, colorRGB);  // 十二点
+          setLEDcol(85, 87, colorRGB);  // 2nd row
+          break;
+        }
+    }
+
+    if (iMinute < 5) {
+      setLEDcol(162, 162, colorRGB);  // 整
+      setLEDcol(189, 189, colorRGB);  // 2nd row
+    }
+  }
+
+
+  // Night/Day mode intensity setting:
+  if (usenightmode == 1) {
+    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
+      intensity = intensity_day;
+      if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
+    } else {
+      intensity = intensity_night;
+    }
+    // Test day/night times function:
+    // Serial.println("############################################################################################");
+    // for (int i = 0; i < 24; i++) {
+    //   String daynightvar = "-";
+    //   if ((i >= day_time_start) && (i <= day_time_stop)) {
+    //     daynightvar = "Day time";
+    //     if ((i == 0) && (day_time_stop == 23)) daynightvar = "Night time";
+    //   } else {
+    //     daynightvar = "Night time";
+    //   }
+    //   Serial.println("Current hour: " + String(i) + " day_time_start: " + String(day_time_start) + " day_time_stop: " + String(day_time_stop) + " --> " + daynightvar);
+    // }
+    // Serial.println("############################################################################################");
+  } else {
+    intensity = intensity_day;
+  }
+  strip.setBrightness(intensity);
+
   strip.show();
 }
 
@@ -2731,6 +2906,52 @@ void showMinutes(int minutes) {
         }
     }
   }
+
+  // ########################################################### CN:
+  if (langLEDlayout == 7) {  // CN:
+    switch (minMod) {
+      case 1:
+        {
+          setLEDcol(200, 200, colorRGB);  // 加
+          setLEDcol(215, 215, colorRGB);  // 2nd row
+          setLEDcol(199, 199, colorRGB);  // 一
+          setLEDcol(216, 216, colorRGB);  // 2nd row
+          setLEDcol(194, 195, colorRGB);  // 分钟
+          setLEDcol(220, 221, colorRGB);  // 2nd row
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(200, 200, colorRGB);  // 加
+          setLEDcol(215, 215, colorRGB);  // 2nd row
+          setLEDcol(198, 198, colorRGB);  // 二
+          setLEDcol(217, 217, colorRGB);  // 2nd row
+          setLEDcol(194, 195, colorRGB);  // 分钟
+          setLEDcol(220, 221, colorRGB);  // 2nd row
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(200, 200, colorRGB);  // 加
+          setLEDcol(215, 215, colorRGB);  // 2nd row
+          setLEDcol(197, 197, colorRGB);  // 三
+          setLEDcol(218, 218, colorRGB);  // 2nd row
+          setLEDcol(194, 195, colorRGB);  // 分钟
+          setLEDcol(220, 221, colorRGB);  // 2nd row
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(200, 200, colorRGB);  // 加
+          setLEDcol(215, 215, colorRGB);  // 2nd row
+          setLEDcol(196, 196, colorRGB);  // 四
+          setLEDcol(219, 219, colorRGB);  // 2nd row
+          setLEDcol(194, 195, colorRGB);  // 分钟
+          setLEDcol(220, 221, colorRGB);  // 2nd row
+          break;
+        }
+    }
+  }
 }
 
 
@@ -2813,6 +3034,15 @@ void SetWLAN(uint32_t color) {
   if (langLEDlayout == 6) {    // GSW:
     setLEDcol(7, 10, color);   // WIFI
     setLEDcol(21, 24, color);  // 2nd row
+  }
+
+  if (langLEDlayout == 7) {  // CN:
+    for (uint16_t i = 42; i < 44; i++) {
+      strip.setPixelColor(i, color);
+    }
+    for (uint16_t i = 52; i < 54; i++) {  // 2nd row
+      strip.setPixelColor(i, color);
+    }
   }
 
   strip.show();
@@ -2955,6 +3185,10 @@ void initTime(String timezone) {
       setLEDcol(28, 31, strip.Color(255, 0, 0));  // 2nd row
     }
 
+    if (langLEDlayout == 7) {  // CN:
+      setLEDcol(40, 41, strip.Color(255, 0, 0));
+      setLEDcol(54, 55, strip.Color(255, 0, 0));  // 2nd row
+    }
 
     strip.show();
     delay(1000);
@@ -3010,6 +3244,11 @@ void initTime(String timezone) {
     if (langLEDlayout == 6) {                     // GSW:
       setLEDcol(0, 3, strip.Color(0, 255, 0));    // ZIIT
       setLEDcol(28, 31, strip.Color(0, 255, 0));  // 2nd row
+    }
+
+    if (langLEDlayout == 7) {  // CN:
+      setLEDcol(40, 41, strip.Color(0, 255, 0));
+      setLEDcol(54, 55, strip.Color(0, 255, 0));  // 2nd row
     }
 
     strip.show();

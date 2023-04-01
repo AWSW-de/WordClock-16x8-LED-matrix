@@ -4,7 +4,7 @@ WordClock 16x16 LED matrix (2023) in 2 design variants, super easy to print and 
 
 Code for the <a href="https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1">WordClock 16x16 LED matrix (2023-V1)</a> and <a href="https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2">WordClock 16x16 LED matrix (2023-V2)</a> 3D print on <a href="https://www.printables.com">www.printables.com</a>
 
-Both designs are available in German, English, Dutch, Swedish, Italian, French and Swiss German. Happy printing =)
+The designs are available in German, English, Dutch, Swedish, Italian, French, Swiss German and Chinese. Happy printing =)
 
 Setup video instructions available for <a href="https://www.youtube.com/watch?v=BrVKY1sfZgI">Microsoft Windows 10/11</a> and <a href="https://www.youtube.com/watch?v=GptDFKhga0k">Apple macOS</a>.
 
