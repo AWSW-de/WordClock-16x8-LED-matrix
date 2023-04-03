@@ -57,7 +57,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.9.0";
+const char* WORD_CLOCK_VERSION = "V1.9.1";
 
 
 // ###########################################################################################################################################
@@ -1330,14 +1330,14 @@ void show_time(int hours, int minutes) {
     updatenow = false;
     lastHourSet = hours;
     lastMinutesSet = minutes;
-    if (debugtexts == 1) {
-      Serial.print("Update display now: ");
-      Serial.print(hours);
-      Serial.print(":");
-      Serial.print(minutes);
-      Serial.print(":");
-      Serial.println(iSecond);
-    }
+    // if (debugtexts == 1) {
+    //   Serial.print("Update display now: ");
+    //   Serial.print(hours);
+    //   Serial.print(":");
+    //   Serial.print(minutes);
+    //   Serial.print(":");
+    //   Serial.println(iSecond);
+    // }
   }
 
   // Set background color:
@@ -1939,54 +1939,12 @@ void show_time(int hours, int minutes) {
     setLEDcol(21, 22, colorRGB);  // 2nd row
     setLEDcol(12, 15, colorRGB);  // SONO
     setLEDcol(16, 19, colorRGB);  // 2nd row
-
-    // 5/55: CINQUE
-    if ((minDiv == 1) || (minDiv == 11)) {
-      setLEDcol(162, 167, colorRGB);
-      setLEDcol(184, 189, colorRGB);  // 2nd row
-    }
-    // 15/45: UN QUARTO
-    if ((minDiv == 3) || (minDiv == 9)) {
-      setLEDcol(128, 129, colorRGB);  // UN
-      setLEDcol(158, 159, colorRGB);  // 2nd row
-      setLEDcol(234, 239, colorRGB);  // QUARTO
-      setLEDcol(240, 245, colorRGB);  // 2nd row
-    }
-    // 10/50: DIECI
-    if ((minDiv == 2) || (minDiv == 10)) {
-      setLEDcol(192, 196, colorRGB);
-      setLEDcol(219, 223, colorRGB);  // 2nd row
-    }
-    // 20/40: VENTI
-    if ((minDiv == 4) || (minDiv == 8)) {
-      setLEDcol(203, 207, colorRGB);
-      setLEDcol(208, 212, colorRGB);  // 2nd row
-    }
-    // 25: VENTICINQUE
-    if (minDiv == 5) {
-      setLEDcol(197, 207, colorRGB);
-      setLEDcol(208, 218, colorRGB);  // 2nd row
-    }
-    // 30: TRENTA
-    if (minDiv == 6) {
-      setLEDcol(168, 173, colorRGB);
-      setLEDcol(178, 183, colorRGB);  // 2nd row
-    }
-    // 35: TRENTACINQUE
-    if (minDiv == 7) {
-      setLEDcol(162, 173, colorRGB);
-      setLEDcol(178, 189, colorRGB);  // 2nd row
-    }
-
-    // E:
-    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 5) || (minDiv == 6) || (minDiv == 7) || (minDiv == 8)) {
-      setLEDcol(134, 134, colorRGB);
-      setLEDcol(153, 153, colorRGB);  // 2nd row
-    }
-    // MENO:
-    if ((minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
-      setLEDcol(132, 135, colorRGB);
-      setLEDcol(152, 155, colorRGB);  // 2nd row
+    if (debugtexts == 1) {
+      Serial.println("");
+      Serial.print(hours);
+      Serial.print(":");
+      Serial.print(minutes);
+      Serial.print(" --> SONO LE ");
     }
 
 
@@ -1994,8 +1952,8 @@ void show_time(int hours, int minutes) {
     int xHour = (iHour % 12);
     if (xHour == 0)
       xHour = 12;
-    // at minute 45 hour needs to be counted up:
-    if (iMinute >= 45) {
+    // at minute 40 hour needs to be counted up:
+    if (iMinute >= 40) {
       if (xHour == 12)
         xHour = 1;
       else
@@ -2010,74 +1968,143 @@ void show_time(int hours, int minutes) {
           setLEDcol(31, 31, colorRGB);    // 2nd row
           setLEDcol(104, 108, colorRGB);  // L’UNA
           setLEDcol(115, 119, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("È L’UNA ");
           break;
         }
       case 2:
         {
           setLEDcol(101, 103, colorRGB);  // DUE
           setLEDcol(120, 122, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("DUE ");
           break;
         }
       case 3:
         {
           setLEDcol(109, 111, colorRGB);  // TRE
           setLEDcol(112, 114, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("TRE ");
           break;
         }
       case 4:
         {
           setLEDcol(73, 79, colorRGB);  // QUATTRO
           setLEDcol(80, 86, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("QUATTRO ");
           break;
         }
       case 5:
         {
           setLEDcol(64, 69, colorRGB);  // CINQUE
           setLEDcol(90, 95, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("CINQUE ");
           break;
         }
       case 6:
         {
           setLEDcol(40, 42, colorRGB);  // SEI
           setLEDcol(53, 55, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("SEI ");
           break;
         }
       case 7:
         {
           setLEDcol(43, 47, colorRGB);  // SETTE
           setLEDcol(48, 52, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("SETTE ");
           break;
         }
       case 8:
         {
           setLEDcol(70, 73, colorRGB);  // OTTO
           setLEDcol(86, 89, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("OTTO ");
           break;
         }
       case 9:
         {
           setLEDcol(97, 100, colorRGB);   // NOVE
           setLEDcol(123, 126, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("NOVE ");
           break;
         }
       case 10:
         {
           setLEDcol(138, 142, colorRGB);  // DIECI
           setLEDcol(145, 149, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("DIECI ");
           break;
         }
       case 11:
         {
           setLEDcol(1, 6, colorRGB);    // UNDICI
           setLEDcol(25, 30, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("UNDICI ");
           break;
         }
       case 12:
         {
           setLEDcol(34, 39, colorRGB);  // DODICI
           setLEDcol(56, 61, colorRGB);  // 2nd row
+          if (debugtexts == 1) Serial.print("DODICI ");
           break;
         }
+    }
+
+    // E:
+    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 5) || (minDiv == 6) || (minDiv == 7)) {
+      setLEDcol(134, 134, colorRGB);
+      setLEDcol(153, 153, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("E ");
+    }
+    // MENO:
+    if ((minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
+      setLEDcol(132, 135, colorRGB);
+      setLEDcol(152, 155, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("MENO ");
+    }
+    // 5/55: CINQUE
+    if ((minDiv == 1) || (minDiv == 11)) {
+      setLEDcol(162, 167, colorRGB);
+      setLEDcol(184, 189, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("CINQUE ");
+    }
+    // 15/45: UN QUARTO
+    if ((minDiv == 3) || (minDiv == 9)) {
+      setLEDcol(128, 129, colorRGB);  // UN
+      setLEDcol(158, 159, colorRGB);  // 2nd row
+      setLEDcol(234, 239, colorRGB);  // QUARTO
+      setLEDcol(240, 245, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("UN QUARTO ");
+    }
+    // 10/50: DIECI
+    if ((minDiv == 2) || (minDiv == 10)) {
+      setLEDcol(192, 196, colorRGB);
+      setLEDcol(219, 223, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("DIECI ");
+    }
+    // 20/40: VENTI
+    if ((minDiv == 4) || (minDiv == 8)) {
+      setLEDcol(203, 207, colorRGB);
+      setLEDcol(208, 212, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("VENTI ");
+    }
+    // 25: VENTICINQUE
+    if (minDiv == 5) {
+      setLEDcol(197, 207, colorRGB);
+      setLEDcol(208, 218, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("VENTICINQUE ");
+    }
+    // 30: TRENTA
+    if (minDiv == 6) {
+      setLEDcol(168, 173, colorRGB);
+      setLEDcol(178, 183, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("TRENTA ");
+    }
+    // 35: TRENTACINQUE
+    if (minDiv == 7) {
+      setLEDcol(162, 173, colorRGB);
+      setLEDcol(178, 189, colorRGB);  // 2nd row
+      if (debugtexts == 1) Serial.print("TRENTACINQUE ");
     }
   }
 
