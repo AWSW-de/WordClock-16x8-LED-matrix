@@ -57,14 +57,15 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V1.9.1";
+const char* WORD_CLOCK_VERSION = "V2.0.0";
 
 
 // ###########################################################################################################################################
 // # Internal web server settings:
 // ###########################################################################################################################################
-AsyncWebServer server(80);  // Web server for config
-WebServer updserver(2022);  // Web server for OTA updates
+AsyncWebServer server(80);       // Web server for config
+WebServer updserver(2022);       // Web server for OTA updates
+AsyncWebServer ledserver(2023);  // Web server for HTML commands
 const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 44, 1);
 DNSServer dnsServer;
@@ -84,13 +85,19 @@ bool updatemode = false;
 bool changedvalues = false;
 int WiFiManFix = 0;
 String iStartTime = "Failed to obtain time on startup... Please restart...";
+int redVal_back, greenVal_back, blueVal_back;
 int redVal_time, greenVal_time, blueVal_time;
-int intensity, intensity_day, intensity_night;
+int intensity, intensity_day, intensity_night, intensity_web;
+int set_web_intensity = 0;
 int usenightmode, day_time_start, day_time_stop, statusNightMode;
 int useshowip, usesinglemin;
-int statusLabelID, statusNightModeID, statusLanguageID;
+int statusLabelID, statusNightModeID, statusLanguageID, intensity_web_HintID, DayNightSectionID, LEDsettingsSectionID;
+int sliderBrightnessDayID, switchNightModeID, sliderBrightnessNightID, call_day_time_startID, call_day_time_stopID;
 char* selectLang;
 int RandomColor;
+uint16_t text_colour_background;
+uint16_t text_colour_time;
+int switchRandomColorID, switchSingleMinutesID;
 
 
 // ###########################################################################################################################################
@@ -106,6 +113,7 @@ void setup() {
   Serial.println("######################################################################");
   getFlashValues();                // Read settings from flash
   strip.begin();                   // Init the LEDs
+  strip.show();                    // Init the LEDs --> Set them to OFF
   intensity = intensity_day;       // Set the intenity to day mode for startup
   strip.setBrightness(intensity);  // Set LED brightness
   if (testTime == 0) {             // If time text test mode is not used:
@@ -117,6 +125,7 @@ void setup() {
     updatenow = true;              // Update the display 1x after startup
     update_display();              // Update LED display
     handleOTAupdate();             // Start the ESP32 OTA update server
+    handleLEDupdate();             // LED update via web
     Serial.println("######################################################################");
     Serial.println("# Web interface online at: http://" + IpAddress2String(WiFi.localIP()));
   }
@@ -161,38 +170,57 @@ void setupWebInterface() {
 
   // Section LED settings:
   // #####################
-  ESPUI.separator("LED settings:");
+  LEDsettingsSectionID = ESPUI.separator("LED settings:");
 
   // Time color selector:
   char hex_time[7] = { 0 };
   sprintf(hex_time, "#%02X%02X%02X", redVal_time, greenVal_time, blueVal_time);
-  uint16_t text_colour_time;
   text_colour_time = ESPUI.text("Time", colCallTIME, ControlColor::Dark, hex_time);
   ESPUI.setInputType(text_colour_time, "color");
 
-  // Intensity DAY slider selector: !!! DEFAULT LIMITED TO 128 of 255 !!!
-  ESPUI.slider("Brightness during the day", &sliderBrightnessDay, ControlColor::Dark, intensity_day, 0, LEDintensityLIMIT);
+  // Background color selector:
+  char hex_back[7] = { 0 };
+  sprintf(hex_back, "#%02X%02X%02X", redVal_back, greenVal_back, blueVal_back);
+  text_colour_background = ESPUI.text("Background", colCallBACK, ControlColor::Dark, hex_back);
+  ESPUI.setInputType(text_colour_background, "color");
+
+  // Use random color mode:
+  switchRandomColorID = ESPUI.switcher("Use random text color every new minute", &switchRandomColor, ControlColor::Dark, RandomColor);
+  if (RandomColor == 1) {
+    ESPUI.updateVisibility(text_colour_time, false);
+    ESPUI.updateVisibility(text_colour_background, false);
+  }
+
+  // Show single minutes to display the minute exact time:
+  switchSingleMinutesID = ESPUI.switcher("Show single minutes to display the minute exact time", &switchSingleMinutes, ControlColor::Dark, usesinglemin);
+
+  // Show note when intensity is currently controlled via web-url usage and these internal settings get disabled:
+  intensity_web_HintID = ESPUI.label("Manual settings disabled due to web URL usage:", ControlColor::Alizarin, "Restart WordClock or deactivate web control usage via http://" + IpAddress2String(WiFi.localIP()) + ":2023/config?LEDs=1");
+  ESPUI.updateVisibility(intensity_web_HintID, false);
+
+
+
+  // Section LED night mode settings:
+  // ################################
+  DayNightSectionID = ESPUI.separator("Day/Night LED brightness mode settings:");
 
   // Use night mode function:
-  ESPUI.switcher("Show single minutes to display the minute exact time", &switchSingleMinutes, ControlColor::Dark, usesinglemin);
+  switchNightModeID = ESPUI.switcher("Use night mode to reduce brightness", &switchNightMode, ControlColor::Dark, usenightmode);
 
-  // Use night mode function:
-  ESPUI.switcher("Use night mode to reduce brightness", &switchNightMode, ControlColor::Dark, usenightmode);
+  // Intensity DAY slider selector: !!! DEFAULT LIMITED TO 64 of 255 !!!
+  sliderBrightnessDayID = ESPUI.slider("Brightness during the day", &sliderBrightnessDay, ControlColor::Dark, intensity_day, 0, LEDintensityLIMIT);
 
-  // Intensity NIGHT slider selector: !!! DEFAULT LIMITED TO 128 of 255 !!!
-  ESPUI.slider("Brightness at night", &sliderBrightnessNight, ControlColor::Dark, intensity_night, 0, LEDintensityLIMIT);
+  // Intensity NIGHT slider selector: !!! DEFAULT LIMITED TO 64 of 255 !!!
+  sliderBrightnessNightID = ESPUI.slider("Brightness at night", &sliderBrightnessNight, ControlColor::Dark, intensity_night, 0, LEDintensityLIMIT);
 
   // Night mode status:
   statusNightModeID = ESPUI.label("Night mode status", ControlColor::Dark, "Night mode not used");
 
   // Day mode start time:
-  ESPUI.number("Day time starts at", call_day_time_start, ControlColor::Dark, day_time_start, 0, 11);
+  call_day_time_startID = ESPUI.number("Day time starts at", call_day_time_start, ControlColor::Dark, day_time_start, 0, 11);
 
   // Day mode stop time:
-  ESPUI.number("Day time ends after", call_day_time_stop, ControlColor::Dark, day_time_stop, 12, 23);
-
-  // Use random color mode:
-  ESPUI.switcher("Use random text color every new minute", &switchRandomColor, ControlColor::Dark, RandomColor);
+  call_day_time_stopID = ESPUI.number("Day time ends after", call_day_time_stop, ControlColor::Dark, day_time_stop, 12, 23);
 
 
 
@@ -226,6 +254,21 @@ void setupWebInterface() {
 
   // WiFi MAC-address:
   ESPUI.label("MAC address", ControlColor::Dark, WiFi.macAddress());
+
+
+
+  // Section smart home control via web URLs:
+  // ########################################
+  ESPUI.separator("Smart home control via web URLs:");
+
+  // About note:
+  ESPUI.label("About note", ControlColor::Dark, "Control WordClock from your smart home environment via web URLs.");
+
+  // Functions note:
+  ESPUI.label("Functions", ControlColor::Dark, "You can turn the LEDs off or on via http commands to reduce energy consumption.");
+
+  // Usage note:
+  ESPUI.label("Usage hints and examples", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":2023");
 
 
 
@@ -324,6 +367,9 @@ void getFlashValues() {
   redVal_time = preferences.getUInt("redVal_time", redVal_time_default);
   greenVal_time = preferences.getUInt("greenVal_time", greenVal_time_default);
   blueVal_time = preferences.getUInt("blueVal_time", blueVal_time_default);
+  redVal_back = preferences.getUInt("redVal_back", redVal_back_default);
+  greenVal_back = preferences.getUInt("greenVal_back", greenVal_back_default);
+  blueVal_back = preferences.getUInt("blueVal_back", blueVal_back_default);
   intensity_day = preferences.getUInt("intensity_day", intensity_day_default);
   intensity_night = preferences.getUInt("intensity_night", intensity_night_default);
   usenightmode = preferences.getUInt("usenightmode", usenightmode_default);
@@ -346,6 +392,9 @@ void setFlashValues() {
   preferences.putUInt("redVal_time", redVal_time);
   preferences.putUInt("greenVal_time", greenVal_time);
   preferences.putUInt("blueVal_time", blueVal_time);
+  preferences.putUInt("redVal_back", redVal_back);
+  preferences.putUInt("greenVal_back", greenVal_back);
+  preferences.putUInt("blueVal_back", blueVal_back);
   preferences.putUInt("intensity_day", intensity_day);
   preferences.putUInt("intensity_night", intensity_night);
   preferences.putUInt("usenightmode", usenightmode);
@@ -375,7 +424,7 @@ void setFlashValues() {
 int WordClockResetCounter = 0;
 void buttonWordClockReset(Control* sender, int type, void* param) {
   updatedevice = false;
-  delay(1000);
+  delay(250);
   if (WordClockResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (WordClockResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
   switch (type) {
@@ -385,11 +434,14 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
       if (WordClockResetCounter == 1) {
         Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST EXECUTED");
         preferences.clear();
-        delay(1000);
+        delay(250);
         preferences.putUInt("langLEDlayout", langLEDlayout_default);
         preferences.putUInt("redVal_time", redVal_time_default);
         preferences.putUInt("greenVal_time", greenVal_time_default);
         preferences.putUInt("blueVal_time", blueVal_time_default);
+        preferences.putUInt("redVal_back", redVal_back_default);
+        preferences.putUInt("greenVal_back", greenVal_back_default);
+        preferences.putUInt("blueVal_back", blueVal_back_default);
         preferences.putUInt("intensity_day", intensity_day_default);
         preferences.putUInt("intensity_night", intensity_night_default);
         preferences.putUInt("useshowip", useshowip_default);
@@ -398,18 +450,21 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
         preferences.putUInt("day_time_stop", day_time_stop_default);
         preferences.putUInt("usesinglemin", usesinglemin_default);
         preferences.putUInt("RandomColor", RandomColor_default);
-        delay(1000);
+        delay(250);
         preferences.end();
         Serial.println("####################################################################################################");
         Serial.println("# WORDCLOCK SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE AGAIN... #");
         Serial.println("####################################################################################################");
-        delay(1000);
+        for (int i = 0; i < NUMPIXELS; i++) {
+          strip.setPixelColor(i, 0, 0, 0);
+        }
+        strip.show();
+        delay(250);
         ESP.restart();
       } else {
         Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST");
         ESPUI.print(statusLabelID, "WORDCLOCK SETTINGS RESET REQUESTED");
         ESPUI.updateButton(sender->id, "! Press button once more to apply settings reset !");
-        delay(1000);
         WordClockResetCounter = WordClockResetCounter + 1;
       }
       break;
@@ -1023,32 +1078,22 @@ int getDigit(int number, int pos) {
 // ###########################################################################################################################################
 // # GUI: Restart the WordClock:
 // ###########################################################################################################################################
-int ResetCounter = 0;
 void buttonRestart(Control* sender, int type, void* param) {
   updatedevice = false;
-  delay(1000);
-  if (changedvalues == true) {
-    setFlashValues();  // Write settings to flash
-    delay(1000);
-  }
+  delay(250);
+  ResetTextLEDs(strip.Color(255, 0, 0));
+  if (changedvalues == true) setFlashValues();  // Write settings to flash
+  delay(250);
   preferences.end();
-  if (ResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
-  if (ResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
-  switch (type) {
-    case B_DOWN:
-      break;
-    case B_UP:
-      if (ResetCounter == 1) {
-        delay(1000);
-        ESP.restart();
-      } else {
-        Serial.println("Status: Restart request");
-        ESPUI.print(statusLabelID, "RESTART REQUESTED");
-        ESPUI.updateButton(sender->id, "! Press button once more to apply restart !");
-        ResetCounter = ResetCounter + 1;
-      }
-      break;
+  delay(250);
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  delay(750);
+  for (int i = 0; i < NUMPIXELS; i++) {
+    strip.setPixelColor(i, 0, 0, 0);
   }
+  strip.show();
+  delay(250);
+  ESP.restart();
 }
 
 
@@ -1073,7 +1118,11 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
         Serial.println("####################################################################################################");
         Serial.println("# WIFI SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE WIFI AGAIN... #");
         Serial.println("####################################################################################################");
-        delay(500);
+        for (int i = 0; i < NUMPIXELS; i++) {
+          strip.setPixelColor(i, 0, 0, 0);
+        }
+        strip.show();
+        delay(250);
         ESP.restart();
       } else {
         preferences.putUInt("WiFiManFix", 0);                 // WiFi Manager Fix Reset
@@ -1258,9 +1307,17 @@ void switchRandomColor(Control* sender, int value) {
   switch (value) {
     case S_ACTIVE:
       RandomColor = 1;
+      ESPUI.updateVisibility(text_colour_background, false);
+      ESPUI.updateVisibility(text_colour_time, false);
+      redVal_back = 0;
+      greenVal_back = 0;
+      blueVal_back = 0;
       break;
     case S_INACTIVE:
       RandomColor = 0;
+      ESPUI.updateVisibility(text_colour_background, true);
+      ESPUI.updateVisibility(text_colour_time, true);
+      ESPUI.jsonReload();
       break;
   }
   changedvalues = true;
@@ -1293,6 +1350,35 @@ void switchShowIP(Control* sender, int value) {
 void update_display() {
   if (debugtexts == 1) Serial.println("Time: " + iStartTime);
 
+
+  // Night/Day mode intensity setting:
+  if ((usenightmode == 1) && (set_web_intensity == 0)) {
+    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
+      intensity = intensity_day;
+      if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
+    } else {
+      intensity = intensity_night;
+    }
+    // Test day/night times function:
+    // Serial.println("############################################################################################");
+    // for (int i = 0; i < 24; i++) {
+    //   String daynightvar = "-";
+    //   if ((i >= day_time_start) && (i <= day_time_stop)) {
+    //     daynightvar = "Day time";
+    //     if ((i == 0) && (day_time_stop == 23)) daynightvar = "Night time";
+    //   } else {
+    //     daynightvar = "Night time";
+    //   }
+    //   Serial.println("Current hour: " + String(i) + " day_time_start: " + String(day_time_start) + " day_time_stop: " + String(day_time_stop) + " --> " + daynightvar);
+    // }
+    // Serial.println("############################################################################################");
+  } else {  // Control intensity by WordClock settings or via HTML command:
+    if (set_web_intensity == 0) intensity = intensity_day;
+    if (set_web_intensity == 1) intensity = 0;
+  }
+  strip.setBrightness(intensity);
+
+  // Show the current time or use the time text test function:
   if (testTime == 0) {  // Show the current time:
     show_time(iHour, iMinute);
   } else {  // TEST THE DISPLAY TIME OUTPUT:
@@ -2415,7 +2501,6 @@ void show_time(int hours, int minutes) {
     }
   }
 
-
   // ########################################################### CN:
   if (langLEDlayout == 7) {  // CN:
 
@@ -2568,33 +2653,6 @@ void show_time(int hours, int minutes) {
       setLEDcol(189, 189, colorRGB);  // 2nd row
     }
   }
-
-
-  // Night/Day mode intensity setting:
-  if (usenightmode == 1) {
-    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
-      intensity = intensity_day;
-      if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
-    } else {
-      intensity = intensity_night;
-    }
-    // Test day/night times function:
-    // Serial.println("############################################################################################");
-    // for (int i = 0; i < 24; i++) {
-    //   String daynightvar = "-";
-    //   if ((i >= day_time_start) && (i <= day_time_stop)) {
-    //     daynightvar = "Day time";
-    //     if ((i == 0) && (day_time_stop == 23)) daynightvar = "Night time";
-    //   } else {
-    //     daynightvar = "Night time";
-    //   }
-    //   Serial.println("Current hour: " + String(i) + " day_time_start: " + String(day_time_start) + " day_time_stop: " + String(day_time_stop) + " --> " + daynightvar);
-    // }
-    // Serial.println("############################################################################################");
-  } else {
-    intensity = intensity_day;
-  }
-  strip.setBrightness(intensity);
 
   strip.show();
 }
@@ -2986,7 +3044,7 @@ void showMinutes(int minutes) {
 // # Background color function: SET ALL LEDs OFF
 // ###########################################################################################################################################
 void back_color() {
-  uint32_t c0 = strip.Color(0, 0, 0);
+  uint32_t c0 = strip.Color(redVal_back, greenVal_back, blueVal_back);  // Background color
   for (int i = 0; i < NUMPIXELS; i++) {
     strip.setPixelColor(i, c0);
   }
@@ -3063,13 +3121,9 @@ void SetWLAN(uint32_t color) {
     setLEDcol(21, 24, color);  // 2nd row
   }
 
-  if (langLEDlayout == 7) {  // CN:
-    for (uint16_t i = 42; i < 44; i++) {
-      strip.setPixelColor(i, color);
-    }
-    for (uint16_t i = 52; i < 54; i++) {  // 2nd row
-      strip.setPixelColor(i, color);
-    }
+  if (langLEDlayout == 7) {    // CN:
+    setLEDcol(42, 43, color);  // WIFI
+    setLEDcol(52, 53, color);  // 2nd row
   }
 
   strip.show();
@@ -3346,6 +3400,26 @@ void getRGBTIME(String hexvalue) {
 
 
 // ###########################################################################################################################################
+// # GUI: Convert hex color value to RGB int values - BACKGROUND:
+// ###########################################################################################################################################
+void getRGBBACK(String hexvalue) {
+  updatedevice = false;
+  delay(1000);
+  hexvalue.toUpperCase();
+  char c[7];
+  hexvalue.toCharArray(c, 8);
+  int red = hexcolorToInt(c[1], c[2]);
+  int green = hexcolorToInt(c[3], c[4]);
+  int blue = hexcolorToInt(c[5], c[6]);
+  redVal_back = red;
+  greenVal_back = green;
+  blueVal_back = blue;
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
 // # GUI: Convert hex color value to RGB int values - helper function:
 // ###########################################################################################################################################
 int hexcolorToInt(char upper, char lower) {
@@ -3363,6 +3437,14 @@ int hexcolorToInt(char upper, char lower) {
 // ###########################################################################################################################################
 void colCallTIME(Control* sender, int type) {
   getRGBTIME(sender->value);
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Color change for background color:
+// ###########################################################################################################################################
+void colCallBACK(Control* sender, int type) {
+  getRGBBACK(sender->value);
 }
 
 
@@ -3552,6 +3634,86 @@ void handleOTAupdate() {
   updserver.begin();
 }
 
+
+// ###########################################################################################################################################
+// # HTML command web server:
+// ###########################################################################################################################################
+int ew = 0;  // Current extra word
+String ledstatus = "ON";
+void handleLEDupdate() {  // LED server pages urls:
+
+  ledserver.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {  // Show a manual how to use these links:
+    String message = "WordClock web configuration and querry options examples:\n\n";
+    message = message + "General:\n";
+    message = message + "http://" + IpAddress2String(WiFi.localIP()) + ":2023 --> Shows this text\n\n";
+    message = message + "Get the status of the WordClock LEDs:\n";
+    message = message + "http://" + IpAddress2String(WiFi.localIP()) + ":2023/status --> Show the status of the LEDs (0 = OFF and 1 = ON).\n\n";
+    message = message + "Turn the LEDs OFF or ON:\n";
+    message = message + "http://" + IpAddress2String(WiFi.localIP()) + ":2023/config?LEDs=0 --> LED intensity is set to OFF which will turn the display off.\n";
+    message = message + "http://" + IpAddress2String(WiFi.localIP()) + ":2023/config?LEDs=1 --> LED intensity is set to ON which will turn the display on again...\n";
+    request->send(200, "text/plain", message);
+  });
+
+  ledserver.on("/config", HTTP_GET, [](AsyncWebServerRequest* request) {  // Configure background and time texts color and intensity:
+    int paramsNr = request->params();
+    // Serial.println(paramsNr);
+    for (int i = 0; i < paramsNr; i++) {
+      AsyncWebParameter* p = request->getParam(i);
+      // Serial.print("Param name: ");
+      // Serial.println(p->name());
+      // Serial.print("Param value: ");
+      // Serial.println(p->value());
+      // Serial.println("------------------");
+      if ((p->value().toInt() >= 0) && (p->value().toInt() <= 1)) {
+        if ((String(p->name()) == "LEDs") && (p->value().toInt() == 0)) {
+          set_web_intensity = 1;
+          ledstatus = "OFF";
+          ESPUI.updateVisibility(intensity_web_HintID, true);
+          ESPUI.updateVisibility(statusNightModeID, false);
+          ESPUI.updateVisibility(sliderBrightnessDayID, false);
+          ESPUI.updateVisibility(switchNightModeID, false);
+          ESPUI.updateVisibility(sliderBrightnessNightID, false);
+          ESPUI.updateVisibility(call_day_time_startID, false);
+          ESPUI.updateVisibility(call_day_time_stopID, false);
+          ESPUI.updateVisibility(text_colour_time, false);
+          ESPUI.updateVisibility(text_colour_background, false);
+          ESPUI.updateVisibility(switchRandomColorID, false);
+          ESPUI.updateVisibility(DayNightSectionID, false);
+          ESPUI.updateVisibility(switchSingleMinutesID, false);
+          ESPUI.jsonReload();
+        }
+        if ((String(p->name()) == "LEDs") && (p->value().toInt() == 1)) {
+          set_web_intensity = 0;
+          ledstatus = "ON";
+          ESPUI.updateVisibility(intensity_web_HintID, false);
+          ESPUI.updateVisibility(statusNightModeID, true);
+          ESPUI.updateVisibility(sliderBrightnessDayID, true);
+          ESPUI.updateVisibility(switchNightModeID, true);
+          ESPUI.updateVisibility(sliderBrightnessNightID, true);
+          ESPUI.updateVisibility(call_day_time_startID, true);
+          ESPUI.updateVisibility(call_day_time_stopID, true);
+          ESPUI.updateVisibility(text_colour_time, true);
+          ESPUI.updateVisibility(text_colour_background, true);
+          ESPUI.updateVisibility(switchRandomColorID, true);
+          ESPUI.updateVisibility(DayNightSectionID, true);
+          ESPUI.updateVisibility(switchSingleMinutesID, true);
+        }
+        changedvalues = true;
+        updatenow = true;
+      } else {
+        request->send(200, "text/plain", "INVALID VALUES - MUST BE BETWEEN 0 and 1");
+      }
+    }
+    request->send(200, "text/plain", "WordClock LEDs set to: " + ledstatus);
+  });
+
+  ledserver.on("/status", HTTP_GET, [](AsyncWebServerRequest* request) {  // Show the status of all extra words and the color for the background and time texts:
+    String message = ledstatus;
+    request->send(200, "text/plain", message);
+  });
+
+  ledserver.begin();
+}
 
 // ###########################################################################################################################################
 // # EOF - You have successfully reached the end of the code - well done ;-)

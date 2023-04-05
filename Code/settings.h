@@ -8,7 +8,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V1.9.1
+// # Compatible with WordClock version: V2.0.0
 // #
 // ###########################################################################################################################################
 /*
@@ -69,6 +69,9 @@ int langLEDlayout_default = 0;  // LED language layout default
 // ###########################################################################################################################################
 // # LED defaults:
 // ###########################################################################################################################################
+int redVal_back_default = 0;      // Default background color RED
+int greenVal_back_default = 0;    // Default background color GREEN
+int blueVal_back_default = 0;     // Default background color BLUE
 int redVal_time_default = 0;      // Default time color RED
 int greenVal_time_default = 255;  // Default time color GREEN
 int blueVal_time_default = 255;   // Default time color BLUE
