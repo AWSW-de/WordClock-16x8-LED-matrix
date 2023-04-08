@@ -57,7 +57,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.0.0";
+const char* WORD_CLOCK_VERSION = "V2.1.0";
 
 
 // ###########################################################################################################################################
@@ -128,6 +128,7 @@ void setup() {
     handleLEDupdate();             // LED update via web
     Serial.println("######################################################################");
     Serial.println("# Web interface online at: http://" + IpAddress2String(WiFi.localIP()));
+    Serial.println("# HTTP controls online at: http://" + IpAddress2String(WiFi.localIP()) + ":2023");
   }
   Serial.println("######################################################################");
   Serial.println("# WordClock startup finished...");
@@ -1348,35 +1349,7 @@ void switchShowIP(Control* sender, int value) {
 // # Update the display / time on it:
 // ###########################################################################################################################################
 void update_display() {
-  if (debugtexts == 1) Serial.println("Time: " + iStartTime);
-
-
-  // Night/Day mode intensity setting:
-  if ((usenightmode == 1) && (set_web_intensity == 0)) {
-    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
-      intensity = intensity_day;
-      if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
-    } else {
-      intensity = intensity_night;
-    }
-    // Test day/night times function:
-    // Serial.println("############################################################################################");
-    // for (int i = 0; i < 24; i++) {
-    //   String daynightvar = "-";
-    //   if ((i >= day_time_start) && (i <= day_time_stop)) {
-    //     daynightvar = "Day time";
-    //     if ((i == 0) && (day_time_stop == 23)) daynightvar = "Night time";
-    //   } else {
-    //     daynightvar = "Night time";
-    //   }
-    //   Serial.println("Current hour: " + String(i) + " day_time_start: " + String(day_time_start) + " day_time_stop: " + String(day_time_stop) + " --> " + daynightvar);
-    // }
-    // Serial.println("############################################################################################");
-  } else {  // Control intensity by WordClock settings or via HTML command:
-    if (set_web_intensity == 0) intensity = intensity_day;
-    if (set_web_intensity == 1) intensity = 0;
-  }
-  strip.setBrightness(intensity);
+  // if (debugtexts == 1) Serial.println("Time: " + iStartTime);
 
   // Show the current time or use the time text test function:
   if (testTime == 0) {  // Show the current time:
@@ -1405,26 +1378,51 @@ void update_display() {
 // # Display hours and minutes text function:
 // ###########################################################################################################################################
 uint32_t colorRGB;
+static int lastHourSet = -1;
+static int lastMinutesSet = -1;
 void show_time(int hours, int minutes) {
-  static int lastHourSet = -1;
-  static int lastMinutesSet = -1;
+
   if ((lastHourSet == hours && lastMinutesSet == minutes) && updatenow == false) {  // Reduce display updates to new minutes and new config updates
     return;
   }
 
-  if (updatenow = true) {
-    updatenow = false;
-    lastHourSet = hours;
-    lastMinutesSet = minutes;
-    // if (debugtexts == 1) {
-    //   Serial.print("Update display now: ");
-    //   Serial.print(hours);
-    //   Serial.print(":");
-    //   Serial.print(minutes);
-    //   Serial.print(":");
-    //   Serial.println(iSecond);
-    // }
+  updatenow = false;
+  lastHourSet = hours;
+  lastMinutesSet = minutes;
+
+  // Show current time of display update:
+  if (debugtexts == 1) Serial.println("Update display now: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
+
+  // Night/Day mode intensity setting:
+  if ((usenightmode == 1) && (set_web_intensity == 0)) {
+    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
+      intensity = intensity_day;
+      if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
+    } else {
+      intensity = intensity_night;
+    }
+    if (testDayNightmode == 1) {  // Test day/night times function:
+      Serial.println("############################################################################################");
+      Serial.println("Current time day/night test: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
+      Serial.println("Current settings: day_time_start: " + String(day_time_start) + " day_time_stop: " + String(day_time_stop));
+      for (int i = 0; i < 24; i++) {
+        String daynightvar = "-";
+        if ((i >= day_time_start) && (i <= day_time_stop)) {
+          daynightvar = "Day time";
+          if ((i == 0) && (day_time_stop == 23)) daynightvar = "Night time";
+        } else {
+          daynightvar = "Night time";
+        }
+        Serial.println("Current hour: " + String(i) + " --> " + daynightvar);
+      }
+      testDayNightmode = 0;  // Show the list 1x only
+      Serial.println("############################################################################################");
+    }
+  } else {  // Control intensity by WordClock settings or via HTML command:
+    if (set_web_intensity == 0) intensity = intensity_day;
+    if (set_web_intensity == 1) intensity = 0;
   }
+  strip.setBrightness(intensity);
 
   // Set background color:
   back_color();
@@ -1438,8 +1436,11 @@ void show_time(int hours, int minutes) {
   iMinute = minutes;
 
   // Test a special time:
-  // iHour = 23;
-  // iMinute = 3;
+  if (testspecialtime == 1) {
+    Serial.println("Special time test active: " + String(test_hour) + ":" + String(test_minute));
+    iHour = test_hour;
+    iMinute = test_minute;
+  }
 
   // divide minute by 5 to get value for display control
   int minDiv = iMinute / 5;
@@ -1453,41 +1454,55 @@ void show_time(int hours, int minutes) {
     setLEDcol(16, 17, colorRGB);  // 2nd row
     setLEDcol(10, 12, colorRGB);
     setLEDcol(19, 21, colorRGB);  // 2nd row
+    if (testPrintTimeTexts == 1) {
+      Serial.println("");
+      Serial.print(hours);
+      Serial.print(":");
+      Serial.print(minutes);
+      Serial.print(" --> ES IST ");
+    }
 
     // FÜNF: (Minuten)
     if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
       setLEDcol(76, 79, colorRGB);
       setLEDcol(80, 83, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("FÜNF ");
     }
     // VIERTEL:
     if ((minDiv == 3) || (minDiv == 9)) {
       setLEDcol(69, 75, colorRGB);
       setLEDcol(84, 90, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("VIERTEL ");
     }
     // ZEHN: (Minuten)
     if ((minDiv == 2) || (minDiv == 10)) {
       setLEDcol(32, 35, colorRGB);
       setLEDcol(60, 63, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("ZEHN ");
     }
     // ZWANZIG:
     if ((minDiv == 4) || (minDiv == 8)) {
       setLEDcol(41, 47, colorRGB);
       setLEDcol(48, 54, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("ZWANZIG ");
     }
     // NACH:
     if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 7)) {
       setLEDcol(64, 67, colorRGB);
       setLEDcol(92, 95, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("NACH ");
     }
     // VOR:
     if ((minDiv == 5) || (minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
       setLEDcol(109, 111, colorRGB);
       setLEDcol(112, 114, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("VOR ");
     }
     // HALB:
     if ((minDiv == 5) || (minDiv == 6) || (minDiv == 7)) {
       setLEDcol(104, 107, colorRGB);
       setLEDcol(116, 119, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("HALB ");
     }
 
 
@@ -1511,10 +1526,12 @@ void show_time(int hours, int minutes) {
           if (xHour == 1) {
             setLEDcol(169, 171, colorRGB);  // EIN
             setLEDcol(180, 182, colorRGB);  // 2nd row
+            if (testPrintTimeTexts == 1) Serial.print("EIN ");
           }
           if ((xHour == 1) && (iMinute > 4)) {
             setLEDcol(168, 171, colorRGB);  // EINS (S in EINS) (just used if not point 1 o'clock)
             setLEDcol(180, 183, colorRGB);  // 2nd row
+            if (testPrintTimeTexts == 1) Serial.print("EINS ");
           }
           break;
         }
@@ -1522,66 +1539,77 @@ void show_time(int hours, int minutes) {
         {
           setLEDcol(140, 143, colorRGB);  // ZWEI
           setLEDcol(144, 147, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ZWEI ");
           break;
         }
       case 3:
         {
           setLEDcol(136, 139, colorRGB);  // DREI
           setLEDcol(148, 151, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("DREI ");
           break;
         }
       case 4:
         {
           setLEDcol(128, 131, colorRGB);  // VIER
           setLEDcol(156, 159, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("VIER ");
           break;
         }
       case 5:
         {
           setLEDcol(160, 163, colorRGB);  // FUENF
           setLEDcol(188, 191, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("FÜNF ");
           break;
         }
       case 6:
         {
           setLEDcol(164, 168, colorRGB);  // SECHS
           setLEDcol(183, 187, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("SECHS ");
           break;
         }
       case 7:
         {
           setLEDcol(202, 207, colorRGB);  // SIEBEN
           setLEDcol(208, 213, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("SIEBEN ");
           break;
         }
       case 8:
         {
           setLEDcol(172, 175, colorRGB);  // ACHT
           setLEDcol(176, 179, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ACHT ");
           break;
         }
       case 9:
         {
           setLEDcol(132, 135, colorRGB);  // NEUN
           setLEDcol(152, 155, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("NEUN ");
           break;
         }
       case 10:
         {
           setLEDcol(99, 102, colorRGB);   // ZEHN (Stunden)
           setLEDcol(121, 124, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ZEHN ");
           break;
         }
       case 11:
         {
           setLEDcol(96, 98, colorRGB);    // ELF
           setLEDcol(125, 127, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ELF ");
           break;
         }
       case 12:
         {
           setLEDcol(197, 201, colorRGB);  // ZWÖLF
           setLEDcol(214, 218, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ZWÖLF ");
           break;
         }
     }
@@ -1589,6 +1617,7 @@ void show_time(int hours, int minutes) {
     if (iMinute < 5) {
       setLEDcol(192, 194, colorRGB);  // UHR
       setLEDcol(221, 223, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("UHR ");
     }
   }
 
@@ -2025,7 +2054,7 @@ void show_time(int hours, int minutes) {
     setLEDcol(21, 22, colorRGB);  // 2nd row
     setLEDcol(12, 15, colorRGB);  // SONO
     setLEDcol(16, 19, colorRGB);  // 2nd row
-    if (debugtexts == 1) {
+    if (testPrintTimeTexts == 1) {
       Serial.println("");
       Serial.print(hours);
       Serial.print(":");
@@ -2054,84 +2083,84 @@ void show_time(int hours, int minutes) {
           setLEDcol(31, 31, colorRGB);    // 2nd row
           setLEDcol(104, 108, colorRGB);  // L’UNA
           setLEDcol(115, 119, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("È L’UNA ");
+          if (testPrintTimeTexts == 1) Serial.print("È L’UNA ");
           break;
         }
       case 2:
         {
           setLEDcol(101, 103, colorRGB);  // DUE
           setLEDcol(120, 122, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("DUE ");
+          if (testPrintTimeTexts == 1) Serial.print("DUE ");
           break;
         }
       case 3:
         {
           setLEDcol(109, 111, colorRGB);  // TRE
           setLEDcol(112, 114, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("TRE ");
+          if (testPrintTimeTexts == 1) Serial.print("TRE ");
           break;
         }
       case 4:
         {
           setLEDcol(73, 79, colorRGB);  // QUATTRO
           setLEDcol(80, 86, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("QUATTRO ");
+          if (testPrintTimeTexts == 1) Serial.print("QUATTRO ");
           break;
         }
       case 5:
         {
           setLEDcol(64, 69, colorRGB);  // CINQUE
           setLEDcol(90, 95, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("CINQUE ");
+          if (testPrintTimeTexts == 1) Serial.print("CINQUE ");
           break;
         }
       case 6:
         {
           setLEDcol(40, 42, colorRGB);  // SEI
           setLEDcol(53, 55, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("SEI ");
+          if (testPrintTimeTexts == 1) Serial.print("SEI ");
           break;
         }
       case 7:
         {
           setLEDcol(43, 47, colorRGB);  // SETTE
           setLEDcol(48, 52, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("SETTE ");
+          if (testPrintTimeTexts == 1) Serial.print("SETTE ");
           break;
         }
       case 8:
         {
           setLEDcol(70, 73, colorRGB);  // OTTO
           setLEDcol(86, 89, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("OTTO ");
+          if (testPrintTimeTexts == 1) Serial.print("OTTO ");
           break;
         }
       case 9:
         {
           setLEDcol(97, 100, colorRGB);   // NOVE
           setLEDcol(123, 126, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("NOVE ");
+          if (testPrintTimeTexts == 1) Serial.print("NOVE ");
           break;
         }
       case 10:
         {
           setLEDcol(138, 142, colorRGB);  // DIECI
           setLEDcol(145, 149, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("DIECI ");
+          if (testPrintTimeTexts == 1) Serial.print("DIECI ");
           break;
         }
       case 11:
         {
           setLEDcol(1, 6, colorRGB);    // UNDICI
           setLEDcol(25, 30, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("UNDICI ");
+          if (testPrintTimeTexts == 1) Serial.print("UNDICI ");
           break;
         }
       case 12:
         {
           setLEDcol(34, 39, colorRGB);  // DODICI
           setLEDcol(56, 61, colorRGB);  // 2nd row
-          if (debugtexts == 1) Serial.print("DODICI ");
+          if (testPrintTimeTexts == 1) Serial.print("DODICI ");
           break;
         }
     }
@@ -2140,19 +2169,19 @@ void show_time(int hours, int minutes) {
     if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 5) || (minDiv == 6) || (minDiv == 7)) {
       setLEDcol(134, 134, colorRGB);
       setLEDcol(153, 153, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("E ");
+      if (testPrintTimeTexts == 1) Serial.print("E ");
     }
     // MENO:
     if ((minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
       setLEDcol(132, 135, colorRGB);
       setLEDcol(152, 155, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("MENO ");
+      if (testPrintTimeTexts == 1) Serial.print("MENO ");
     }
     // 5/55: CINQUE
     if ((minDiv == 1) || (minDiv == 11)) {
       setLEDcol(162, 167, colorRGB);
       setLEDcol(184, 189, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("CINQUE ");
+      if (testPrintTimeTexts == 1) Serial.print("CINQUE ");
     }
     // 15/45: UN QUARTO
     if ((minDiv == 3) || (minDiv == 9)) {
@@ -2160,37 +2189,37 @@ void show_time(int hours, int minutes) {
       setLEDcol(158, 159, colorRGB);  // 2nd row
       setLEDcol(234, 239, colorRGB);  // QUARTO
       setLEDcol(240, 245, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("UN QUARTO ");
+      if (testPrintTimeTexts == 1) Serial.print("UN QUARTO ");
     }
     // 10/50: DIECI
     if ((minDiv == 2) || (minDiv == 10)) {
       setLEDcol(192, 196, colorRGB);
       setLEDcol(219, 223, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("DIECI ");
+      if (testPrintTimeTexts == 1) Serial.print("DIECI ");
     }
     // 20/40: VENTI
     if ((minDiv == 4) || (minDiv == 8)) {
       setLEDcol(203, 207, colorRGB);
       setLEDcol(208, 212, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("VENTI ");
+      if (testPrintTimeTexts == 1) Serial.print("VENTI ");
     }
     // 25: VENTICINQUE
     if (minDiv == 5) {
       setLEDcol(197, 207, colorRGB);
       setLEDcol(208, 218, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("VENTICINQUE ");
+      if (testPrintTimeTexts == 1) Serial.print("VENTICINQUE ");
     }
     // 30: TRENTA
     if (minDiv == 6) {
       setLEDcol(168, 173, colorRGB);
       setLEDcol(178, 183, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("TRENTA ");
+      if (testPrintTimeTexts == 1) Serial.print("TRENTA ");
     }
     // 35: TRENTACINQUE
     if (minDiv == 7) {
       setLEDcol(162, 173, colorRGB);
       setLEDcol(178, 189, colorRGB);  // 2nd row
-      if (debugtexts == 1) Serial.print("TRENTACINQUE ");
+      if (testPrintTimeTexts == 1) Serial.print("TRENTACINQUE ");
     }
   }
 

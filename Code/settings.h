@@ -8,7 +8,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V2.0.0
+// # Compatible with WordClock version: V2.1.0
 // #
 // ###########################################################################################################################################
 /*
@@ -108,8 +108,14 @@ const char* NTPserver = "pool.ntp.org";               // Time server address. Ch
 // ###########################################################################################################################################
 // # Test functions:
 // ###########################################################################################################################################
-int testTime = 0;    // LED time text output test
-int debugtexts = 0;  // Show more debug information in serial monitor
+int debugtexts = 0;          // Show more debug information in serial monitor
+int testTime = 0;            // LED time text output test
+int testPrintTimeTexts = 0;  // Print the time texts shown on the display in the serial monitor (Currently DE + IT only)
+int testDayNightmode = 0;    // Test the day/night mode settings
+// Test a special time:
+int testspecialtime = 0;  // Use test a special time function
+int test_hour = 23;       // Test a special time: hour
+int test_minute = 19;     // Test a special time: minute
 
 
 // ###########################################################################################################################################
