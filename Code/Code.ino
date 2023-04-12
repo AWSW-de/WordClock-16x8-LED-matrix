@@ -3,6 +3,7 @@
 // # WordClock code for the 2 printables WordClock 16x16 matrix projects:
 // # https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1
 // # https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2
+// # https://www.printables.com/de/model/450556-wordclock-16x16-led-matrix-2023-v3
 // #
 // # Code by https://github.com/AWSW-de
 // #
@@ -57,7 +58,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.1.0";
+const char* WORD_CLOCK_VERSION = "V2.1.1";
 
 
 // ###########################################################################################################################################
