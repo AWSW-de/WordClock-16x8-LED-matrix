@@ -10,7 +10,9 @@ Setup video instructions available for <a href="https://www.youtube.com/watch?v=
 
 <hr>
 
-Images of 2023-V1 with stencil font and 2023-V2 with regular font:
+Images of 2023-V1 with stencil font and 2023-V2 and 2023-V3 with regular font:
+
+<img src=".Images/IMG_2603.jpeg">
 
 <img src="./Images/IMG_1120.jpg">
 
