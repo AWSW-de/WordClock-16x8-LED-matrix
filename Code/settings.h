@@ -9,7 +9,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V2.1.1
+// # Compatible with WordClock version: V2.2.0
 // #
 // ###########################################################################################################################################
 /*
@@ -56,14 +56,15 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ
 int langLEDlayout_default = 0;  // LED language layout default
 // Available languages:
 // ####################
-// 0 = DE   - GERMAN
-// 1 = EN   - ENGLISH
-// 2 = NL   - DUTCH
-// 3 = SWE  - SWEDISH
-// 4 = IT   - ITALIAN
-// 5 = FR   - FRENCH
-// 6 = GSW  - SWISS GERMAN
-// 7 = CN   - CHINESE
+// 0 = DE    - GERMAN
+// 1 = EN    - ENGLISH
+// 2 = NL    - DUTCH
+// 3 = SWE   - SWEDISH
+// 4 = IT    - ITALIAN
+// 5 = FR    - FRENCH
+// 6 = GSW   - SWISS GERMAN
+// 7 = CN    - CHINESE
+// 8 = SCHWB - SWABIAN GERMAN
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 

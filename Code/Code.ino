@@ -58,7 +58,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.1.1";
+const char* WORD_CLOCK_VERSION = "V2.2.0";
 
 
 // ###########################################################################################################################################
@@ -315,14 +315,15 @@ void setupWebInterface() {
   if (langLEDlayout == 3) selectLang = "Swedish";
   if (langLEDlayout == 4) selectLang = "Italian";
   if (langLEDlayout == 5) selectLang = "French";
-  if (langLEDlayout == 6) selectLang = "German";
+  if (langLEDlayout == 6) selectLang = "Swiss German";
   if (langLEDlayout == 7) selectLang = "Chinese";
+  if (langLEDlayout == 8) selectLang = "Swabian German";
 
   // Language overview:
-  ESPUI.addControl(ControlType::Label, "Available languages", "<center><table border='3' class='center' width='100%'><tr><th>Value:</th><th>Language:</th><th>Value:</th><th>Language:</th></tr><tr align='center'><td>0</td><td>German</td><td>4</td><td>Italian</td></tr><tr align='center'><td>1</td><td>English</td><td>5</td><td>French</td></tr><tr align='center'><td>2</td><td>Dutch</td><td>6</td><td>Swiss German</td></tr><tr align='center'><td>3</td><td>Swedish</td><td>7</td><td>Chinese</td></tr></table>", ControlColor::Dark, Control::noParent, 0);
+  ESPUI.addControl(ControlType::Label, "Available languages", "<center><table border='3' class='center' width='100%'><tr><th>Value:</th><th>Language:</th><th>Value:</th><th>Language:</th></tr><tr align='center'><td>0</td><td>German</td><td>1</td><td>English</td></tr><tr align='center'><td>2</td><td>Dutch</td><td>3</td><td>Swedish</td></tr><tr align='center'><td>4</td><td>Italian</td><td>5</td><td>French</td></tr><tr align='center'><td>6</td><td>Swiss German</td><td>7</td><td>Chinese</td></tr><tr align='center'><td>8</td><td>Swabian German</td><td></td><td></td></tr></table>", ControlColor::Dark, Control::noParent, 0);
 
   // Change language:
-  ESPUI.number("Select your language", call_langauge_select, ControlColor::Dark, langLEDlayout, 0, 7);
+  ESPUI.number("Select your language", call_langauge_select, ControlColor::Dark, langLEDlayout, 0, 8);
 
   // Current language:
   statusLanguageID = ESPUI.label("Current layout language", ControlColor::Dark, selectLang);
@@ -490,6 +491,7 @@ void call_langauge_select(Control* sender, int type) {
   if (langLEDlayout == 5) selectLang = "French";
   if (langLEDlayout == 6) selectLang = "Swiss German";
   if (langLEDlayout == 7) selectLang = "Chinese";
+  if (langLEDlayout == 8) selectLang = "Swabian German";
   ESPUI.print(statusLanguageID, selectLang);
   changedvalues = true;
   updatedevice = true;
@@ -1234,6 +1236,15 @@ void ResetTextLEDs(uint32_t color) {
   if (langLEDlayout == 7) {    // CN:
     setLEDcol(38, 39, color);  // RESET 重置
     setLEDcol(56, 57, color);  // 2nd row
+  }
+
+  if (langLEDlayout == 8) {      // SWABIAN GERMAN:
+    setLEDcol(40, 41, color);    // RE
+    setLEDcol(54, 55, color);    // 2nd row
+    setLEDcol(133, 134, color);  // SE
+    setLEDcol(153, 154, color);  // 2nd row
+    setLEDcol(204, 204, color);  // T
+    setLEDcol(211, 211, color);  // 2nd row
   }
 
   strip.show();
@@ -2684,6 +2695,174 @@ void show_time(int hours, int minutes) {
     }
   }
 
+  // ########################################################### SWABIAN GERMAN:
+  if (langLEDlayout == 8) {  // SWABIAN GERMAN:
+
+    // ES ISCH:
+    setLEDcol(14, 15, colorRGB);
+    setLEDcol(16, 17, colorRGB);  // 2nd row
+    setLEDcol(9, 12, colorRGB);
+    setLEDcol(19, 22, colorRGB);  // 2nd row
+    if (testPrintTimeTexts == 1) {
+      Serial.println("");
+      Serial.print(hours);
+      Serial.print(":");
+      Serial.print(minutes);
+      Serial.print(" --> ES ISCH ");
+    }
+
+    // FÜNF: (Minuten)
+    if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
+      setLEDcol(76, 79, colorRGB);
+      setLEDcol(80, 83, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("FÜNF ");
+    }
+
+    // VIERTL:
+    if (minDiv == 3) {
+      setLEDcol(0, 5, colorRGB);
+      setLEDcol(26, 31, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("VIERTL ");
+    }
+
+    // DREIVIERTL:
+    if (minDiv == 9) {
+      setLEDcol(33, 42, colorRGB);
+      setLEDcol(53, 62, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("DREIVIERTL ");
+    }
+
+    // ZEHN: (Minuten)
+    if ((minDiv == 2) || (minDiv == 4) || (minDiv == 8) || (minDiv == 10)) {
+      setLEDcol(71, 74, colorRGB);
+      setLEDcol(85, 88, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("ZEHN ");
+    }
+
+    // NACH:
+    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 7) || (minDiv == 8)) {
+      setLEDcol(65, 68, colorRGB);
+      setLEDcol(91, 94, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("NACH ");
+    }
+
+    // VOR:
+    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 10) || (minDiv == 11)) {
+      setLEDcol(109, 111, colorRGB);
+      setLEDcol(112, 114, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("VOR ");
+    }
+
+    // HALB:
+    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 6) || (minDiv == 7) || (minDiv == 8)) {
+      setLEDcol(102, 105, colorRGB);
+      setLEDcol(118, 121, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) Serial.print("HALB ");
+    }
+
+    //set hour from 1 to 12 (at noon, or midnight)
+    int xHour = (iHour % 12);
+    if (xHour == 0)
+      xHour = 12;
+    // at minute 25 hour needs to be counted up:
+    // fuenf vor halb 2 = 13:15
+    if (iMinute >= 15) {
+      if (xHour == 12)
+        xHour = 1;
+      else
+        xHour++;
+    }
+
+    switch (xHour) {
+      case 1:
+        {
+          if (xHour == 1) {
+            setLEDcol(165, 168, colorRGB);  // OISE
+            setLEDcol(183, 186, colorRGB);  // 2nd row
+            if (testPrintTimeTexts == 1) Serial.print("OISE ");
+          }
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(160, 164, colorRGB);  // ZWOIE
+          setLEDcol(187, 191, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ZWOIE ");
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(235, 239, colorRGB);  // DREIE
+          setLEDcol(240, 244, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("DREIE ");
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(128, 132, colorRGB);  // VIERE
+          setLEDcol(155, 159, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("VIERE ");
+          break;
+        }
+      case 5:
+        {
+          setLEDcol(139, 143, colorRGB);  // FÜNFE
+          setLEDcol(144, 148, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("FÜNFE ");
+          break;
+        }
+      case 6:
+        {
+          setLEDcol(133, 138, colorRGB);  // SECHSE
+          setLEDcol(149, 154, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("SECHSE ");
+          break;
+        }
+      case 7:
+        {
+          setLEDcol(169, 175, colorRGB);  // SIEBENE
+          setLEDcol(176, 182, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("SIEBENE ");
+          break;
+        }
+      case 8:
+        {
+          setLEDcol(203, 207, colorRGB);  // ACHTE
+          setLEDcol(208, 212, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ACHTE ");
+          break;
+        }
+      case 9:
+        {
+          setLEDcol(192, 196, colorRGB);  // NEUNE
+          setLEDcol(219, 223, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("NEUNE ");
+          break;
+        }
+      case 10:
+        {
+          setLEDcol(96, 100, colorRGB);   // ZEHNE (Stunden)
+          setLEDcol(123, 127, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ZEHNE ");
+          break;
+        }
+      case 11:
+        {
+          setLEDcol(232, 235, colorRGB);  // ELFE
+          setLEDcol(244, 247, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ELFE ");
+          break;
+        }
+      case 12:
+        {
+          setLEDcol(197, 202, colorRGB);  // ZWÖLFE
+          setLEDcol(213, 218, colorRGB);  // 2nd row
+          if (testPrintTimeTexts == 1) Serial.print("ZWÖLFE ");
+          break;
+        }
+    }
+  }
+
   strip.show();
 }
 
@@ -3067,6 +3246,53 @@ void showMinutes(int minutes) {
         }
     }
   }
+
+  // ##################################################### SWABIAN:
+  if (langLEDlayout == 8) {  // SWABIAN:
+
+    switch (minMod) {
+      case 1:
+        {
+          setLEDcol(230, 230, colorRGB);  // +
+          setLEDcol(249, 249, colorRGB);  // 2nd row
+          setLEDcol(229, 229, colorRGB);  // 1
+          setLEDcol(250, 250, colorRGB);  // 2nd row
+          setLEDcol(224, 224, colorRGB);  // M
+          setLEDcol(255, 255, colorRGB);  // 2nd row
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(230, 230, colorRGB);  // +
+          setLEDcol(249, 249, colorRGB);  // 2nd row
+          setLEDcol(228, 228, colorRGB);  // 2
+          setLEDcol(251, 251, colorRGB);  // 2nd row
+          setLEDcol(224, 224, colorRGB);  // M
+          setLEDcol(255, 255, colorRGB);  // 2nd row
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(230, 230, colorRGB);  // +
+          setLEDcol(249, 249, colorRGB);  // 2nd row
+          setLEDcol(227, 227, colorRGB);  // 3
+          setLEDcol(252, 252, colorRGB);  // 2nd row
+          setLEDcol(224, 224, colorRGB);  // M
+          setLEDcol(255, 255, colorRGB);  // 2nd row
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(230, 230, colorRGB);  // +
+          setLEDcol(249, 249, colorRGB);  // 2nd row
+          setLEDcol(226, 226, colorRGB);  // 4
+          setLEDcol(253, 253, colorRGB);  // 2nd row
+          setLEDcol(224, 224, colorRGB);  // M
+          setLEDcol(255, 255, colorRGB);  // 2nd row
+          break;
+        }
+    }
+  }
 }
 
 
@@ -3154,6 +3380,13 @@ void SetWLAN(uint32_t color) {
   if (langLEDlayout == 7) {    // CN:
     setLEDcol(42, 43, color);  // WIFI
     setLEDcol(52, 53, color);  // 2nd row
+  }
+
+  if (langLEDlayout == 8) {    // SWABIAN:
+    setLEDcol(12, 13, color);  // WI
+    setLEDcol(18, 19, color);  // 2nd row
+    setLEDcol(7, 8, color);    // FI
+    setLEDcol(23, 24, color);  // 2nd row
   }
 
   strip.show();
@@ -3301,6 +3534,15 @@ void initTime(String timezone) {
       setLEDcol(54, 55, strip.Color(255, 0, 0));  // 2nd row
     }
 
+    if (langLEDlayout == 8) {                       // SWABIAN:
+      setLEDcol(73, 74, strip.Color(255, 0, 0));    // ZE
+      setLEDcol(85, 86, strip.Color(255, 0, 0));    // 2nd row
+      setLEDcol(131, 131, strip.Color(255, 0, 0));  // I
+      setLEDcol(156, 156, strip.Color(255, 0, 0));  // 2nd row
+      setLEDcol(204, 204, strip.Color(255, 0, 0));  // T
+      setLEDcol(211, 211, strip.Color(255, 0, 0));  // 2nd row
+    }
+
     strip.show();
     delay(1000);
     ESP.restart();
@@ -3360,6 +3602,15 @@ void initTime(String timezone) {
     if (langLEDlayout == 7) {  // CN:
       setLEDcol(40, 41, strip.Color(0, 255, 0));
       setLEDcol(54, 55, strip.Color(0, 255, 0));  // 2nd row
+    }
+
+    if (langLEDlayout == 8) {                       // SWABIAN:
+      setLEDcol(73, 74, strip.Color(0, 255, 0));    // ZE
+      setLEDcol(85, 86, strip.Color(0, 255, 0));    // 2nd row
+      setLEDcol(131, 131, strip.Color(0, 255, 0));  // I
+      setLEDcol(156, 156, strip.Color(0, 255, 0));  // 2nd row
+      setLEDcol(204, 204, strip.Color(0, 255, 0));  // T
+      setLEDcol(211, 211, strip.Color(0, 255, 0));  // 2nd row
     }
 
     strip.show();
