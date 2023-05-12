@@ -32,7 +32,6 @@
 // #
 // # You will need to add the following libraries to your Arduino IDE to use the project:
 // # - Adafruit NeoPixel      // by Adafruit:                     https://github.com/adafruit/Adafruit_NeoPixel
-// # - WiFiManager            // by tablatronix / tzapu:          https://github.com/tzapu/WiFiManager
 // # - AsyncTCP               // by me-no-dev:                    https://github.com/me-no-dev/AsyncTCP
 // # - ESPAsyncWebServer      // by me-no-dev:                    https://github.com/me-no-dev/ESPAsyncWebServer
 // # - ESPUI                  // by s00500:                       https://github.com/s00500/ESPUI
@@ -41,34 +40,33 @@
 // #
 // ###########################################################################################################################################
 #include <WiFi.h>               // Used to connect the ESP32 to your WiFi
-#include <WiFiManager.h>        // Used for the WiFi Manager option to be able to connect the WordClock to your WiFi without code changes
+#include <WebServer.h>          // ESP32 OTA update function
+#include <Update.h>             // ESP32 OTA update function
 #include <Adafruit_NeoPixel.h>  // Used to drive the NeoPixel LEDs
 #include "time.h"               // Used for NTP time requests
 #include <AsyncTCP.h>           // Used for the internal web server
 #include <ESPAsyncWebServer.h>  // Used for the internal web server
 #include <DNSServer.h>          // Used for the internal web server
 #include <ESPUI.h>              // Used for the internal web server
+#include "esp_log.h"            // Disable WiFi debug warnings
 #include <Preferences.h>        // Used to save the configuration to the ESP32 flash
-#include <WiFiClient.h>         // Used for update function
-#include <WebServer.h>          // Used for update function
-#include <Update.h>             // Used for update function
 #include "settings.h"           // Settings are stored in a seperate file to make to code better readable and to be able to switch to other settings faster
 
 
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.2.0";
+const char* WORD_CLOCK_VERSION = "V2.5.0";
 
 
 // ###########################################################################################################################################
 // # Internal web server settings:
 // ###########################################################################################################################################
 AsyncWebServer server(80);       // Web server for config
-WebServer updserver(2022);       // Web server for OTA updates
+WebServer otaserver(8080);       // Web OTA ESP32 update server
 AsyncWebServer ledserver(2023);  // Web server for HTML commands
 const byte DNS_PORT = 53;
-IPAddress apIP(192, 168, 44, 1);
+IPAddress apIP(192, 168, 4, 1);
 DNSServer dnsServer;
 
 
@@ -80,18 +78,20 @@ int langLEDlayout;
 int iHour = 0;
 int iMinute = 0;
 int iSecond = 0;
+int iDay = 23;
+int iMonth = 11;
+int iYear = 2022;
 bool updatedevice = true;
 bool updatenow = false;
 bool updatemode = false;
 bool changedvalues = false;
-int WiFiManFix = 0;
-String iStartTime = "Failed to obtain time on startup... Please restart...";
+String iStartTime = " ";
 int redVal_back, greenVal_back, blueVal_back;
 int redVal_time, greenVal_time, blueVal_time;
 int intensity, intensity_day, intensity_night, intensity_web;
 int set_web_intensity = 0;
 int usenightmode, day_time_start, day_time_stop, statusNightMode;
-int useshowip, usesinglemin;
+int useshowip, usesinglemin, useStartupText;
 int statusLabelID, statusNightModeID, statusLanguageID, intensity_web_HintID, DayNightSectionID, LEDsettingsSectionID;
 int sliderBrightnessDayID, switchNightModeID, sliderBrightnessNightID, call_day_time_startID, call_day_time_stopID;
 char* selectLang;
@@ -99,6 +99,7 @@ int RandomColor;
 uint16_t text_colour_background;
 uint16_t text_colour_time;
 int switchRandomColorID, switchSingleMinutesID;
+bool WiFIsetup = false;
 
 
 // ###########################################################################################################################################
@@ -106,34 +107,18 @@ int switchRandomColorID, switchSingleMinutesID;
 // ###########################################################################################################################################
 void setup() {
   Serial.begin(115200);
-  delay(500);
-  preferences.begin("wordclock", false);  // Init ESP32 flash
+  delay(250);
   Serial.println("######################################################################");
   Serial.print("# WordClock startup of version: ");
   Serial.println(WORD_CLOCK_VERSION);
   Serial.println("######################################################################");
-  getFlashValues();                // Read settings from flash
-  strip.begin();                   // Init the LEDs
-  strip.show();                    // Init the LEDs --> Set them to OFF
-  intensity = intensity_day;       // Set the intenity to day mode for startup
-  strip.setBrightness(intensity);  // Set LED brightness
-  if (testTime == 0) {             // If time text test mode is not used:
-    WIFI_login();                  // WiFiManager
-    WiFiManager1stBootFix();       // WiFi Manager 1st connect fix
-    ShowIPaddress();               // Display the current IP-address
-    configNTPTime();               // NTP time setup
-    setupWebInterface();           // Generate the configuration page
-    updatenow = true;              // Update the display 1x after startup
-    update_display();              // Update LED display
-    handleOTAupdate();             // Start the ESP32 OTA update server
-    handleLEDupdate();             // LED update via web
-    Serial.println("######################################################################");
-    Serial.println("# Web interface online at: http://" + IpAddress2String(WiFi.localIP()));
-    Serial.println("# HTTP controls online at: http://" + IpAddress2String(WiFi.localIP()) + ":2023");
-  }
-  Serial.println("######################################################################");
-  Serial.println("# WordClock startup finished...");
-  Serial.println("######################################################################");
+  preferences.begin("wordclock", false);  // Init ESP32 flash
+  getFlashValues();                       // Read settings from flash
+  strip.begin();                          // Init the LEDs
+  strip.show();                           // Init the LEDs --> Set them to OFF
+  intensity = intensity_day;              // Set the intenity to day mode for startup
+  strip.setBrightness(intensity);         // Set LED brightness
+  WIFI_SETUP();                           // WiFi login and startup of web services
 }
 
 
@@ -141,13 +126,15 @@ void setup() {
 // # Loop function which runs all the time after the startup was done:
 // ###########################################################################################################################################
 void loop() {
-  printLocalTime();                               // Locally get the time (NTP server requests done 1x per hour)
-  if (updatedevice == true) {                     // Allow display updates (normal usage)
-    if (changedvalues == true) setFlashValues();  // Write settings to flash
-    update_display();                             // Update display (1x per minute regulary)
+  if ((WiFIsetup == true) || (testTime == 1)) {
+    printLocalTime();                               // Locally get the time (NTP server requests done 1x per hour)
+    if (updatedevice == true) {                     // Allow display updates (normal usage)
+      if (changedvalues == true) setFlashValues();  // Write settings to flash
+      update_display();                             // Update display (1x per minute regulary)
+    }
+    if (updatemode == true) otaserver.handleClient();  // ESP32 OTA update
   }
-  dnsServer.processNextRequest();                    // Update web server
-  if (updatemode == true) updserver.handleClient();  // ESP32 OTA updates
+  dnsServer.processNextRequest();  // Update the web server
 }
 
 
@@ -230,8 +217,8 @@ void setupWebInterface() {
   // ################
   ESPUI.separator("Startup:");
 
-  // Startup LED test function:
-  // ESPUI.switcher("Show LED test on startup", &switchLEDTest, ControlColor::Dark, useledtest);
+  // Startup WordClock text function:
+  ESPUI.switcher("Show the 'WordClock' text on startup", &switchStartupText, ControlColor::Dark, useStartupText);
 
   // Show IP-address on startup:
   ESPUI.switcher("Show IP-address on startup", &switchShowIP, ControlColor::Dark, useshowip);
@@ -297,10 +284,7 @@ void setupWebInterface() {
   ESPUI.button("Activate update mode", &buttonUpdate, ControlColor::Dark, "Activate update mode", (void*)1);
 
   // Update URL
-  ESPUI.label("Update URL", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":2022/ota");
-
-  // Update User account
-  ESPUI.label("Update account", ControlColor::Dark, "Username: WordClock   /   Password: 16x16");
+  ESPUI.label("Update URL", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":8080");
 
 
 
@@ -355,7 +339,6 @@ void setupWebInterface() {
     }
   }
 
-
   // Deploy the page:
   ESPUI.begin("WordClock");
 }
@@ -379,6 +362,7 @@ void getFlashValues() {
   day_time_start = preferences.getUInt("day_time_start", day_time_start_default);
   day_time_stop = preferences.getUInt("day_time_stop", day_time_stop_default);
   useshowip = preferences.getUInt("useshowip", useshowip_default);
+  useStartupText = preferences.getUInt("useStartupText", useStartupText_default);
   usesinglemin = preferences.getUInt("usesinglemin", usesinglemin_default);
   RandomColor = preferences.getUInt("RandomColor", RandomColor_default);
   if (debugtexts == 1) Serial.println("Read settings from flash: END");
@@ -404,6 +388,7 @@ void setFlashValues() {
   preferences.putUInt("day_time_start", day_time_start);
   preferences.putUInt("day_time_stop", day_time_stop);
   preferences.putUInt("useshowip", useshowip);
+  preferences.putUInt("useStartupText", useStartupText);
   preferences.putUInt("usesinglemin", usesinglemin);
   preferences.putUInt("RandomColor", RandomColor);
   if (debugtexts == 1) Serial.println("Write settings to flash: END");
@@ -427,7 +412,7 @@ void setFlashValues() {
 int WordClockResetCounter = 0;
 void buttonWordClockReset(Control* sender, int type, void* param) {
   updatedevice = false;
-  delay(250);
+  delay(100);
   if (WordClockResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
   if (WordClockResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
   switch (type) {
@@ -436,8 +421,13 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
     case B_UP:
       if (WordClockResetCounter == 1) {
         Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST EXECUTED");
+        // Save stored values for WiFi:
+        String tempDelWiFiSSID = preferences.getString("WIFIssid");
+        String tempDelWiFiPASS = preferences.getString("WIFIpass");
         preferences.clear();
-        delay(250);
+        delay(100);
+        preferences.putString("WIFIssid", tempDelWiFiSSID);  // Restore entered WiFi SSID
+        preferences.putString("WIFIpass", tempDelWiFiPASS);  // Restore entered WiFi password
         preferences.putUInt("langLEDlayout", langLEDlayout_default);
         preferences.putUInt("redVal_time", redVal_time_default);
         preferences.putUInt("greenVal_time", greenVal_time_default);
@@ -448,19 +438,18 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
         preferences.putUInt("intensity_day", intensity_day_default);
         preferences.putUInt("intensity_night", intensity_night_default);
         preferences.putUInt("useshowip", useshowip_default);
+        preferences.putUInt("useStartupText", useStartupText_default);
         preferences.putUInt("usenightmode", usenightmode_default);
         preferences.putUInt("day_time_stop", day_time_stop_default);
         preferences.putUInt("day_time_stop", day_time_stop_default);
         preferences.putUInt("usesinglemin", usesinglemin_default);
         preferences.putUInt("RandomColor", RandomColor_default);
-        delay(250);
+        delay(100);
         preferences.end();
         Serial.println("####################################################################################################");
         Serial.println("# WORDCLOCK SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE AGAIN... #");
         Serial.println("####################################################################################################");
-        for (int i = 0; i < NUMPIXELS; i++) {
-          strip.setPixelColor(i, 0, 0, 0);
-        }
+        ClearDisplay();
         strip.show();
         delay(250);
         ESP.restart();
@@ -499,69 +488,78 @@ void call_langauge_select(Control* sender, int type) {
 
 
 // ###########################################################################################################################################
+// # Clear the display:
+// ###########################################################################################################################################
+void ClearDisplay() {
+  uint32_t c0 = strip.Color(0, 0, 0);
+  for (int i = 0; i < NUMPIXELS; i++) {
+    strip.setPixelColor(i, c0);
+  }
+}
+
+
+// ###########################################################################################################################################
 // # Show the IP-address on the display:
 // ###########################################################################################################################################
 void ShowIPaddress() {
-  if (useshowip == 1) {
-    Serial.println("Show current IP-address on the display: " + IpAddress2String(WiFi.localIP()));
-    int ipdelay = 2000;
+  Serial.println("Show current IP-address on the display: " + IpAddress2String(WiFi.localIP()));
+  int ipdelay = 2000;
 
-    // Testing the digits:
-    // for (int i = 0; i < 10; i++) {
-    //   back_color();
-    //   numbers(i, 3);
-    //   numbers(i, 2);
-    //   numbers(i, 1);
-    //   strip.show();
-    //   delay(ipdelay);
-    // }
+  // Testing the digits:
+  // for (int i = 0; i < 10; i++) {
+  //   ClearDisplay();
+  //   numbers(i, 3);
+  //   numbers(i, 2);
+  //   numbers(i, 1);
+  //   strip.show();
+  //   delay(ipdelay);
+  // }
 
-    // Octet 1:
-    back_color();
-    numbers(getDigit(int(WiFi.localIP()[0]), 2), 3);
-    numbers(getDigit(int(WiFi.localIP()[0]), 1), 2);
-    numbers(getDigit(int(WiFi.localIP()[0]), 0), 1);
-    setLED(160, 160, 1);
-    setLED(191, 191, 1);  // 2nd row
-    setLED(236, 239, 1);
-    setLED(240, 243, 1);  // 2nd row
-    strip.show();
-    delay(ipdelay);
+  // Octet 1:
+  ClearDisplay();
+  numbers(getDigit(int(WiFi.localIP()[0]), 2), 3);
+  numbers(getDigit(int(WiFi.localIP()[0]), 1), 2);
+  numbers(getDigit(int(WiFi.localIP()[0]), 0), 1);
+  setLED(160, 160, 1);
+  setLED(191, 191, 1);  // 2nd row
+  setLED(236, 239, 1);
+  setLED(240, 243, 1);  // 2nd row
+  strip.show();
+  delay(ipdelay);
 
-    // // Octet 2:
-    back_color();
-    numbers(getDigit(int(WiFi.localIP()[1]), 2), 3);
-    numbers(getDigit(int(WiFi.localIP()[1]), 1), 2);
-    numbers(getDigit(int(WiFi.localIP()[1]), 0), 1);
-    setLED(160, 160, 1);
-    setLED(191, 191, 1);  // 2nd row
-    setLED(232, 239, 1);
-    setLED(240, 247, 1);  // 2nd row
-    strip.show();
-    delay(ipdelay);
+  // // Octet 2:
+  ClearDisplay();
+  numbers(getDigit(int(WiFi.localIP()[1]), 2), 3);
+  numbers(getDigit(int(WiFi.localIP()[1]), 1), 2);
+  numbers(getDigit(int(WiFi.localIP()[1]), 0), 1);
+  setLED(160, 160, 1);
+  setLED(191, 191, 1);  // 2nd row
+  setLED(232, 239, 1);
+  setLED(240, 247, 1);  // 2nd row
+  strip.show();
+  delay(ipdelay);
 
-    // // Octet 3:
-    back_color();
-    numbers(getDigit(int(WiFi.localIP()[2]), 2), 3);
-    numbers(getDigit(int(WiFi.localIP()[2]), 1), 2);
-    numbers(getDigit(int(WiFi.localIP()[2]), 0), 1);
-    setLED(160, 160, 1);
-    setLED(191, 191, 1);  // 2nd row
-    setLED(228, 239, 1);
-    setLED(240, 251, 1);  // 2nd row
-    strip.show();
-    delay(ipdelay);
+  // // Octet 3:
+  ClearDisplay();
+  numbers(getDigit(int(WiFi.localIP()[2]), 2), 3);
+  numbers(getDigit(int(WiFi.localIP()[2]), 1), 2);
+  numbers(getDigit(int(WiFi.localIP()[2]), 0), 1);
+  setLED(160, 160, 1);
+  setLED(191, 191, 1);  // 2nd row
+  setLED(228, 239, 1);
+  setLED(240, 251, 1);  // 2nd row
+  strip.show();
+  delay(ipdelay);
 
-    // // Octet 4:
-    back_color();
-    numbers(getDigit(int(WiFi.localIP()[3]), 2), 3);
-    numbers(getDigit(int(WiFi.localIP()[3]), 1), 2);
-    numbers(getDigit(int(WiFi.localIP()[3]), 0), 1);
-    setLED(224, 239, 1);
-    setLED(240, 255, 1);  // 2nd row
-    strip.show();
-    delay(ipdelay);
-  }
+  // // Octet 4:
+  ClearDisplay();
+  numbers(getDigit(int(WiFi.localIP()[3]), 2), 3);
+  numbers(getDigit(int(WiFi.localIP()[3]), 1), 2);
+  numbers(getDigit(int(WiFi.localIP()[3]), 0), 1);
+  setLED(224, 239, 1);
+  setLED(240, 255, 1);  // 2nd row
+  strip.show();
+  delay(ipdelay);
 }
 
 
@@ -1084,18 +1082,9 @@ int getDigit(int number, int pos) {
 // ###########################################################################################################################################
 void buttonRestart(Control* sender, int type, void* param) {
   updatedevice = false;
-  delay(250);
-  ResetTextLEDs(strip.Color(255, 0, 0));
-  if (changedvalues == true) setFlashValues();  // Write settings to flash
-  delay(250);
-  preferences.end();
-  delay(250);
   ResetTextLEDs(strip.Color(0, 255, 0));
-  delay(750);
-  for (int i = 0; i < NUMPIXELS; i++) {
-    strip.setPixelColor(i, 0, 0, 0);
-  }
-  strip.show();
+  if (changedvalues == true) setFlashValues();  // Write settings to flash
+  preferences.end();
   delay(250);
   ESP.restart();
 }
@@ -1104,42 +1093,22 @@ void buttonRestart(Control* sender, int type, void* param) {
 // ###########################################################################################################################################
 // # GUI: Reset the WiFi settings of the WordClock:
 // ###########################################################################################################################################
-int WIFIResetCounter = 0;
 void buttonWiFiReset(Control* sender, int type, void* param) {
   updatedevice = false;
-  if (WIFIResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
-  if (WIFIResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
-  switch (type) {
-    case B_DOWN:
-      break;
-    case B_UP:
-      if (WIFIResetCounter == 1) {
-        Serial.println("Status: WIFI SETTINGS RESET REQUEST EXECUTED");
-        WiFi.disconnect();
-        delay(1000);
-        WiFiManager manager;
-        manager.resetSettings();
-        Serial.println("####################################################################################################");
-        Serial.println("# WIFI SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE WIFI AGAIN... #");
-        Serial.println("####################################################################################################");
-        for (int i = 0; i < NUMPIXELS; i++) {
-          strip.setPixelColor(i, 0, 0, 0);
-        }
-        strip.show();
-        delay(250);
-        ESP.restart();
-      } else {
-        preferences.putUInt("WiFiManFix", 0);                 // WiFi Manager Fix Reset
-        preferences.putUInt("useshowip", useshowip_default);  // Show IP-address again
-        delay(100);
-        preferences.end();
-        Serial.println("Status: WIFI SETTINGS RESET REQUEST");
-        ESPUI.print(statusLabelID, "WORDCLOCK WIFI SETTINGS RESET REQUEST");
-        ESPUI.updateButton(sender->id, "! Press button once more to apply WiFi reset !");
-        WIFIResetCounter = WIFIResetCounter + 1;
-      }
-      break;
-  }
+  Serial.println("Status: WIFI SETTINGS RESET REQUEST");
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  WiFi.disconnect();  // DISCONNECT FROM WIFI
+  delay(1000);
+  preferences.putString("WIFIssid", "");                // Reset WiFi SSID
+  preferences.putString("WIFIpass", "");                // Reste WiFi password
+  preferences.putUInt("useshowip", useshowip_default);  // Show IP-address again
+  preferences.end();
+  Serial.println("Status: WIFI SETTINGS RESET REQUEST EXECUTED");
+  Serial.println("####################################################################################################");
+  Serial.println("# WIFI SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE WIFI AGAIN... #");
+  Serial.println("####################################################################################################");
+  delay(500);
+  ESP.restart();
 }
 
 
@@ -1149,21 +1118,37 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
 void buttonUpdate(Control* sender, int type, void* param) {
   preferences.end();
   updatedevice = false;
-  delay(1000);
-  updatemode = true;
-  delay(1000);
-  back_color();
-  strip.show();
-  Serial.println(String("param: ") + String(int(param)));
-  switch (type) {
-    case B_DOWN:
-      Serial.println("Status: Update request");
-      ESPUI.print(statusLabelID, "Update requested");
-      break;
-    case B_UP:
-      Serial.println("Status: Update executed");
-      ESPUI.updateButton(sender->id, "Update mode active now - Use the update url: >>>");
-      break;
+  ESPUI.print(statusLabelID, "Update requested");
+  ESPUI.updateButton(sender->id, "Update mode active now - Use the update url: >>>");
+  if (updatemode == false) {
+    updatemode = true;
+    int32_t c = strip.Color(0, 0, 255);
+    int TextWait = 500;
+    showtext("U", TextWait, c);
+    showtext("P", TextWait, c);
+    showtext("D", TextWait, c);
+    showtext("A", TextWait, c);
+    showtext("T", TextWait, c);
+    showtext("E", TextWait, c);
+    setLED(0, 0, 1);
+    setLED(31, 31, 1);  // 2nd row
+    setLED(15, 15, 1);
+    setLED(16, 16, 1);  // 2nd row
+    setLED(239, 239, 1);
+    setLED(240, 240, 1);  // 2nd row
+    setLED(224, 224, 1);
+    setLED(255, 255, 1);  // 2nd row
+    int myArray[50];
+    memset(myArray, 0, sizeof(myArray));
+    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };  // U
+    memcpy(myArray, myArray2, sizeof(myArray2));
+    for (int element : myArray) {
+      if (element != 0) {
+        strip.setPixelColor(element, c);
+      }
+    }
+    strip.show();
+    Serial.println("Status: Update request");
   }
 }
 
@@ -1174,7 +1159,7 @@ void buttonUpdate(Control* sender, int type, void* param) {
 void ResetTextLEDs(uint32_t color) {
   updatedevice = false;
   delay(1000);
-  back_color();
+  ClearDisplay();
 
   if (langLEDlayout == 0) {      // DE:
     setLEDcol(137, 138, color);  // RE
@@ -1358,6 +1343,25 @@ void switchShowIP(Control* sender, int value) {
 
 
 // ###########################################################################################################################################
+// # GUI: Show WordClock text switch:
+// ###########################################################################################################################################
+void switchStartupText(Control* sender, int value) {
+  updatedevice = false;
+  delay(1000);
+  switch (value) {
+    case S_ACTIVE:
+      useStartupText = 1;
+      break;
+    case S_INACTIVE:
+      useStartupText = 0;
+      break;
+  }
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
 // # Update the display / time on it:
 // ###########################################################################################################################################
 void update_display() {
@@ -1367,19 +1371,37 @@ void update_display() {
   if (testTime == 0) {  // Show the current time:
     show_time(iHour, iMinute);
   } else {  // TEST THE DISPLAY TIME OUTPUT:
-    strip.setBrightness(5);
+    Serial.println(" ");
+    Serial.println("Show 'TEST' text...");
+    strip.setBrightness(25);
+    redVal_back = 0;
+    greenVal_back = 0;
+    blueVal_back = 0;
+    usenightmode = 0;
+    uint32_t c = strip.Color(redVal_time, greenVal_time, blueVal_time);
+    int TextWait = 500;
+    showtext("T", TextWait, c);
+    showtext("E", TextWait, c);
+    showtext("S", TextWait, c);
+    showtext("T", TextWait, c);
     for (int i = 1; i <= 12; i++) {  // 12 hours only:
       show_time(i, 0);
       delay(1000);
     }
+    Serial.println(" ");
+    Serial.println(" ");
+    Serial.println(" ");
     for (int i = 0; i <= 55; i += 5) {  // 5 minutes steps only:
       show_time(9, i);
       delay(1000);
     }
+    Serial.println(" ");
+    Serial.println(" ");
+    Serial.println(" ");
     for (int i = 9; i < 10; i++) {  // Hours 0 to 3 with all minute texts:
       for (int y = 0; y < 60; y++) {
         show_time(i, y);
-        delay(10);
+        delay(250);
       }
     }
   }
@@ -1403,7 +1425,7 @@ void show_time(int hours, int minutes) {
   lastMinutesSet = minutes;
 
   // Show current time of display update:
-  if (debugtexts == 1) Serial.println("Update display now: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
+  // if (debugtexts == 1) Serial.println("Update display now: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
 
   // Night/Day mode intensity setting:
   if ((usenightmode == 1) && (set_web_intensity == 0)) {
@@ -3304,137 +3326,6 @@ void back_color() {
   for (int i = 0; i < NUMPIXELS; i++) {
     strip.setPixelColor(i, c0);
   }
-  delay(500);
-}
-
-
-// ###########################################################################################################################################
-// # Startup WiFi text function:
-// ###########################################################################################################################################
-void SetWLAN(uint32_t color) {
-  Serial.println("Show text WLAN/WIFI...");
-
-  if (langLEDlayout == 0) {  // DE:
-    for (uint16_t i = 5; i < 9; i++) {
-      strip.setPixelColor(i, color);
-    }
-    for (uint16_t i = 23; i < 27; i++) {  // 2nd row
-      strip.setPixelColor(i, color);
-    }
-  }
-
-  if (langLEDlayout == 1) {  // EN:
-    for (uint16_t i = 7; i < 11; i++) {
-      strip.setPixelColor(i, color);
-    }
-    for (uint16_t i = 21; i < 25; i++) {  // 2nd row
-      strip.setPixelColor(i, color);
-    }
-  }
-
-  if (langLEDlayout == 2) {  // NL:
-    for (uint16_t i = 75; i < 79; i++) {
-      strip.setPixelColor(i, color);
-    }
-    for (uint16_t i = 81; i < 85; i++) {  // 2nd row
-      strip.setPixelColor(i, color);
-    }
-  }
-
-  if (langLEDlayout == 3) {  // SWE:
-    for (uint16_t i = 0; i < 4; i++) {
-      strip.setPixelColor(i, color);
-    }
-    for (uint16_t i = 28; i < 32; i++) {  // 2nd row
-      strip.setPixelColor(i, color);
-    }
-  }
-
-  if (langLEDlayout == 4) {      // IT:
-    setLEDcol(233, 233, color);  // W
-    setLEDcol(246, 246, color);  // 2nd row
-    setLEDcol(231, 231, color);  // I
-    setLEDcol(248, 248, color);  // 2nd row
-    setLEDcol(226, 226, color);  // F
-    setLEDcol(253, 253, color);  // 2nd row
-    setLEDcol(224, 224, color);  // I
-    setLEDcol(255, 255, color);  // 2nd row
-  }
-
-  if (langLEDlayout == 5) {      // FR:
-    setLEDcol(239, 239, color);  // W
-    setLEDcol(240, 240, color);  // 2nd row
-    setLEDcol(237, 237, color);  // I
-    setLEDcol(242, 242, color);  // 2nd row
-    setLEDcol(232, 232, color);  // F
-    setLEDcol(247, 247, color);  // 2nd row
-    setLEDcol(224, 224, color);  // I
-    setLEDcol(255, 255, color);  // 2nd row
-  }
-
-  if (langLEDlayout == 6) {    // GSW:
-    setLEDcol(7, 10, color);   // WIFI
-    setLEDcol(21, 24, color);  // 2nd row
-  }
-
-  if (langLEDlayout == 7) {    // CN:
-    setLEDcol(42, 43, color);  // WIFI
-    setLEDcol(52, 53, color);  // 2nd row
-  }
-
-  if (langLEDlayout == 8) {    // SWABIAN:
-    setLEDcol(12, 13, color);  // WI
-    setLEDcol(18, 19, color);  // 2nd row
-    setLEDcol(7, 8, color);    // FI
-    setLEDcol(23, 24, color);  // 2nd row
-  }
-
-  strip.show();
-}
-
-
-// ###########################################################################################################################################
-// # Wifi Manager setup and reconnect function that runs once at startup and during the loop function of the ESP:
-// ###########################################################################################################################################
-void WIFI_login() {
-  Serial.print("Try to connect to WiFi: ");
-  Serial.println(WiFi.SSID());
-  SetWLAN(strip.Color(0, 0, 255));
-  WiFi.setHostname(hostname);
-  bool WiFires;
-  WiFiManager wifiManager;
-  wifiManager.setConfigPortalTimeout(AP_TIMEOUT);
-  WiFires = wifiManager.autoConnect(DEFAULT_AP_NAME);
-  if (!WiFires) {
-    Serial.print("Failed to connect to WiFi: ");
-    Serial.println(WiFi.SSID());
-    SetWLAN(strip.Color(255, 0, 0));
-    delay(1000);
-  } else {
-    Serial.print("Connected to WiFi: ");
-    Serial.println(WiFi.SSID());
-    SetWLAN(strip.Color(0, 255, 0));
-    delay(1000);
-  }
-}
-
-
-// ###########################################################################################################################################
-// # WiFi Manager 1st connect fix: (Needed after the 1st login to your router - Restart the device once to be able to reach the web page...)
-// ###########################################################################################################################################
-void WiFiManager1stBootFix() {
-  WiFiManFix = preferences.getUInt("WiFiManFix", 0);
-  if (WiFiManFix == 0) {
-    Serial.println("######################################################################");
-    Serial.println("# ESP restart needed because of WiFi Manager Fix");
-    Serial.println("######################################################################");
-    SetWLAN(strip.Color(0, 255, 0));
-    preferences.putUInt("WiFiManFix", 1);
-    delay(1000);
-    preferences.end();
-    delay(1000);
-    ESP.restart();
-  }
 }
 
 
@@ -3477,10 +3368,10 @@ void initTime(String timezone) {
   struct tm timeinfo;
   Serial.println("Setting up time");
   configTime(0, 0, NTPserver);
-  if (!getLocalTime(&timeinfo)) {
-    back_color();
+  while (!getLocalTime(&timeinfo)) {
+    // back_color();
+    ClearDisplay();
     Serial.println("Failed to obtain time");
-    ESPUI.print(statusLabelID, "Failed to obtain time");
 
     if (langLEDlayout == 0) {  // DE:
       setLEDcol(1, 4, strip.Color(255, 0, 0));
@@ -3544,78 +3435,75 @@ void initTime(String timezone) {
     }
 
     strip.show();
-    delay(1000);
-    ESP.restart();
-    return;
-  } else {
-    back_color();
-    Serial.println("Failed to obtain time");
-    ESPUI.print(statusLabelID, "Failed to obtain time");
-
-    if (langLEDlayout == 0) {  // DE:
-      setLEDcol(1, 4, strip.Color(0, 255, 0));
-      setLEDcol(27, 30, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 1) {  // EN:
-      setLEDcol(33, 36, strip.Color(0, 255, 0));
-      setLEDcol(59, 62, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 2) {  // NL:
-      setLEDcol(69, 72, strip.Color(0, 255, 0));
-      setLEDcol(87, 90, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 3) {  // SWE:
-      setLEDcol(96, 98, strip.Color(0, 255, 0));
-      setLEDcol(125, 127, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 4) {                       // IT:
-      setLEDcol(111, 111, strip.Color(0, 255, 0));  // T
-      setLEDcol(112, 112, strip.Color(0, 255, 0));  // 2nd row
-      setLEDcol(96, 97, strip.Color(0, 255, 0));    // EM
-      setLEDcol(126, 127, strip.Color(0, 255, 0));  // 2nd row
-      setLEDcol(131, 131, strip.Color(0, 255, 0));  // P
-      setLEDcol(156, 156, strip.Color(0, 255, 0));  // 2nd row
-      setLEDcol(234, 234, strip.Color(0, 255, 0));  // O
-      setLEDcol(245, 245, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 5) {                       // FR:
-      setLEDcol(10, 10, strip.Color(0, 255, 0));    // T
-      setLEDcol(21, 21, strip.Color(0, 255, 0));    // 2nd row
-      setLEDcol(41, 42, strip.Color(0, 255, 0));    // EM
-      setLEDcol(53, 54, strip.Color(0, 255, 0));    // 2nd row
-      setLEDcol(105, 105, strip.Color(0, 255, 0));  // p
-      setLEDcol(118, 118, strip.Color(0, 255, 0));  // 2nd row
-      setLEDcol(128, 128, strip.Color(0, 255, 0));  // S
-      setLEDcol(159, 159, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 6) {                     // GSW:
-      setLEDcol(0, 3, strip.Color(0, 255, 0));    // ZIIT
-      setLEDcol(28, 31, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 7) {  // CN:
-      setLEDcol(40, 41, strip.Color(0, 255, 0));
-      setLEDcol(54, 55, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    if (langLEDlayout == 8) {                       // SWABIAN:
-      setLEDcol(73, 74, strip.Color(0, 255, 0));    // ZE
-      setLEDcol(85, 86, strip.Color(0, 255, 0));    // 2nd row
-      setLEDcol(131, 131, strip.Color(0, 255, 0));  // I
-      setLEDcol(156, 156, strip.Color(0, 255, 0));  // 2nd row
-      setLEDcol(204, 204, strip.Color(0, 255, 0));  // T
-      setLEDcol(211, 211, strip.Color(0, 255, 0));  // 2nd row
-    }
-
-    strip.show();
-    delay(1000);
+    delay(500);
+    ClearDisplay();
   }
+
+  // Time successfully received:
+  ClearDisplay();
+  if (langLEDlayout == 0) {  // DE:
+    setLEDcol(1, 4, strip.Color(0, 255, 0));
+    setLEDcol(27, 30, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 1) {  // EN:
+    setLEDcol(33, 36, strip.Color(0, 255, 0));
+    setLEDcol(59, 62, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 2) {  // NL:
+    setLEDcol(69, 72, strip.Color(0, 255, 0));
+    setLEDcol(87, 90, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 3) {  // SWE:
+    setLEDcol(96, 98, strip.Color(0, 255, 0));
+    setLEDcol(125, 127, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 4) {                       // IT:
+    setLEDcol(111, 111, strip.Color(0, 255, 0));  // T
+    setLEDcol(112, 112, strip.Color(0, 255, 0));  // 2nd row
+    setLEDcol(96, 97, strip.Color(0, 255, 0));    // EM
+    setLEDcol(126, 127, strip.Color(0, 255, 0));  // 2nd row
+    setLEDcol(131, 131, strip.Color(0, 255, 0));  // P
+    setLEDcol(156, 156, strip.Color(0, 255, 0));  // 2nd row
+    setLEDcol(234, 234, strip.Color(0, 255, 0));  // O
+    setLEDcol(245, 245, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 5) {                       // FR:
+    setLEDcol(10, 10, strip.Color(0, 255, 0));    // T
+    setLEDcol(21, 21, strip.Color(0, 255, 0));    // 2nd row
+    setLEDcol(41, 42, strip.Color(0, 255, 0));    // EM
+    setLEDcol(53, 54, strip.Color(0, 255, 0));    // 2nd row
+    setLEDcol(105, 105, strip.Color(0, 255, 0));  // p
+    setLEDcol(118, 118, strip.Color(0, 255, 0));  // 2nd row
+    setLEDcol(128, 128, strip.Color(0, 255, 0));  // S
+    setLEDcol(159, 159, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 6) {                     // GSW:
+    setLEDcol(0, 3, strip.Color(0, 255, 0));    // ZIIT
+    setLEDcol(28, 31, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 7) {  // CN:
+    setLEDcol(40, 41, strip.Color(0, 255, 0));
+    setLEDcol(54, 55, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  if (langLEDlayout == 8) {                       // SWABIAN:
+    setLEDcol(73, 74, strip.Color(0, 255, 0));    // ZE
+    setLEDcol(85, 86, strip.Color(0, 255, 0));    // 2nd row
+    setLEDcol(131, 131, strip.Color(0, 255, 0));  // I
+    setLEDcol(156, 156, strip.Color(0, 255, 0));  // 2nd row
+    setLEDcol(204, 204, strip.Color(0, 255, 0));  // T
+    setLEDcol(211, 211, strip.Color(0, 255, 0));  // 2nd row
+  }
+
+  strip.show();
+  delay(1000);
   Serial.println("Got the time from NTP");
   setTimezone(timezone);
 }
@@ -3623,14 +3511,12 @@ void initTime(String timezone) {
 void printLocalTime() {
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo)) {
-    Serial.println("Failed to obtain time 1");
     return;
   }
   // Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S zone %Z %z ");
   char timeStringBuff[50];
   strftime(timeStringBuff, sizeof(timeStringBuff), "%A, %B %d %Y %H:%M:%S", &timeinfo);
   iStartTime = String(timeStringBuff);
-  // Serial.println(iStartTime);
   iHour = timeinfo.tm_hour;
   iMinute = timeinfo.tm_min;
   iSecond = timeinfo.tm_sec;
@@ -3786,137 +3672,6 @@ String IpAddress2String(const IPAddress& ipAddress) {
 
 
 // ###########################################################################################################################################
-// # ESP32 OTA update:
-// ###########################################################################################################################################
-const char* loginIndex =
-  "<form name='loginForm'>"
-  "<table width='20%' bgcolor='A09F9F' align='center'>"
-  "<tr>"
-  "<td colspan=2>"
-  "<center><font size=4><b>WordClock Update Login Page</b></font></center>"
-  "<br>"
-  "</td>"
-  "<br>"
-  "<br>"
-  "</tr>"
-  "<tr>"
-  "<td>Username:</td>"
-  "<td><input type='text' size=25 name='userid'><br></td>"
-  "</tr>"
-  "<br>"
-  "<br>"
-  "<tr>"
-  "<td>Password:</td>"
-  "<td><input type='Password' size=25 name='pwd'><br></td>"
-  "<br>"
-  "<br>"
-  "</tr>"
-  "<tr>"
-  "<td><input type='submit' onclick='check(this.form)' value='Login'></td>"
-  "</tr>"
-  "</table>"
-  "</form>"
-  "<script>"
-  "function check(form)"
-  "{"
-  "if(form.userid.value=='WordClock' && form.pwd.value=='16x16')"
-  "{"
-  "window.open('/serverIndex')"
-  "}"
-  "else"
-  "{"
-  " alert('Error Password or Username')/*displays error message*/"
-  "}"
-  "}"
-  "</script>";
-
-const char* serverIndex =
-  "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
-  "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
-  "<input type='file' name='update'>"
-  "<input type='submit' value='Update'>"
-  "</form>"
-  "<div id='prg'>progress: 0%</div>"
-  "<script>"
-  "$('form').submit(function(e){"
-  "e.preventDefault();"
-  "var form = $('#upload_form')[0];"
-  "var data = new FormData(form);"
-  " $.ajax({"
-  "url: '/update',"
-  "type: 'POST',"
-  "data: data,"
-  "contentType: false,"
-  "processData:false,"
-  "xhr: function() {"
-  "var xhr = new window.XMLHttpRequest();"
-  "xhr.upload.addEventListener('progress', function(evt) {"
-  "if (evt.lengthComputable) {"
-  "var per = evt.loaded / evt.total;"
-  "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-  "}"
-  "}, false);"
-  "return xhr;"
-  "},"
-  "success:function(d, s) {"
-  "console.log('success!')"
-  "},"
-  "error: function (a, b, c) {"
-  "}"
-  "});"
-  "});"
-  "</script>";
-
-void handleOTAupdate() {
-  // OTA update server pages urls:
-  updserver.on("/", HTTP_GET, []() {
-    updserver.sendHeader("Connection", "close");
-    updserver.send(200, "text/html", "WordClock web server on port 2022 is up. Please use the shown url and account credentials to update...");
-  });
-
-  updserver.on("/ota", HTTP_GET, []() {
-    updserver.sendHeader("Connection", "close");
-    updserver.send(200, "text/html", loginIndex);
-  });
-
-  updserver.on("/serverIndex", HTTP_GET, []() {
-    updserver.sendHeader("Connection", "close");
-    updserver.send(200, "text/html", serverIndex);
-  });
-
-  // handling uploading firmware file:
-  updserver.on(
-    "/update", HTTP_POST, []() {
-      updserver.sendHeader("Connection", "close");
-      updserver.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-      ESP.restart();
-    },
-    []() {
-      HTTPUpload& upload = updserver.upload();
-      if (upload.status == UPLOAD_FILE_START) {
-        Serial.printf("Update: %s\n", upload.filename.c_str());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {  //start with max available size
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_WRITE) {
-        // flashing firmware to ESP
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-          Update.printError(Serial);
-        }
-      } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) {  //true to set the size to the current progress
-          Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-          delay(1000);
-        } else {
-          Update.printError(Serial);
-        }
-      }
-    });
-  updserver.begin();
-}
-
-
-// ###########################################################################################################################################
 // # HTML command web server:
 // ###########################################################################################################################################
 int ew = 0;  // Current extra word
@@ -3995,6 +3750,780 @@ void handleLEDupdate() {  // LED server pages urls:
 
   ledserver.begin();
 }
+
+
+// ###########################################################################################################################################
+// # Startup LED test function
+// ###########################################################################################################################################
+void callStartText() {
+  Serial.println("Show 'WordClock' startup text...");
+  uint32_t c = strip.Color(redVal_time, greenVal_time, blueVal_time);
+  int TextWait = 500;
+  showtext("W", TextWait, c);
+  showtext("o", TextWait, c);
+  showtext("r", TextWait, c);
+  showtext("d", TextWait, c);
+  showtext("C", TextWait, c);
+  showtext("l", TextWait, c);
+  showtext("o", TextWait, c);
+  showtext("c", TextWait, c);
+  showtext("k", TextWait, c);
+}
+
+
+// ###########################################################################################################################################
+// # Text output function:
+// ###########################################################################################################################################
+void showtext(String letter, int wait, uint32_t c) {
+  ClearDisplay();
+
+  int myArray[50];
+  memset(myArray, 0, sizeof(myArray));
+
+  if (letter == "W") {
+    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 151, 136, 135, 152, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "o") {
+    int myArray2[] = { 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 102, 121, 120, 103, 104, 119, 118, 105 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "r") {
+    int myArray2[] = { 154, 133, 122, 101, 102, 121, 120, 103, 104, 119, 118, 105, 106, 117, 138, 149, 170, 181 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "d") {
+    int myArray2[] = { 102, 121, 120, 103, 104, 119, 118, 105, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "C") {
+    int myArray2[] = { 58, 37, 57, 38, 39, 56, 40, 55, 41, 54, 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "l") {
+    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181 };  // , 169, 182, 183, 168
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "c") {
+    int myArray2[] = { 122, 101, 102, 121, 120, 103, 104, 119, 118, 105, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "k") {
+    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 105, 118, 104, 119, 71, 88, 37, 58, 134, 153, 165, 186 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "S") {
+    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 133, 154, 165, 166, 167, 168, 169, 170, 181, 182, 183, 184, 185, 186 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "E") {
+    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 165, 166, 167, 168, 169, 170, 181, 182, 183, 184, 185, 186 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "T") {
+    int myArray2[] = { 37, 38, 39, 40, 41, 42, 43, 52, 53, 54, 55, 56, 57, 58, 72, 87, 104, 119, 136, 151, 168, 183 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "I") {
+    int myArray2[] = { 40, 55, 72, 87, 104, 119, 136, 151, 168, 183 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "F") {
+    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 170, 181 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "U") {
+    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "P") {
+    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 69, 90, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 170, 181 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "D") {
+    int myArray2[] = { 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 74, 85, 69, 90, 101, 106, 117, 122, 138, 149, 170, 181, 133, 154, 169, 182, 183, 168, 167, 184, 166, 185 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == "A") {
+    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 69, 90, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 170, 181, 133, 154, 165, 186 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+  }
+
+  if (letter == " ") {
+    int myArray2[] = { 255 };
+    memcpy(myArray, myArray2, sizeof(myArray2));
+    c = strip.Color(0, 0, 0);
+  }
+
+  for (int element : myArray) {
+    if (element != 0) {
+      strip.setPixelColor(element, c);
+    }
+  }
+
+  strip.show();
+  delay(wait);
+  ClearDisplay();
+}
+
+
+// ###########################################################################################################################################
+// # Startup WiFi text function:
+// ###########################################################################################################################################
+void SetWLAN(uint32_t color) {
+  if (debugtexts == 1) Serial.println("Show text WLAN/WIFI...");
+  ClearDisplay();
+
+  if (langLEDlayout == 0) {  // DE:
+    for (uint16_t i = 5; i < 9; i++) {
+      strip.setPixelColor(i, color);
+    }
+    for (uint16_t i = 23; i < 27; i++) {  // 2nd row
+      strip.setPixelColor(i, color);
+    }
+  }
+
+  if (langLEDlayout == 1) {  // EN:
+    for (uint16_t i = 7; i < 11; i++) {
+      strip.setPixelColor(i, color);
+    }
+    for (uint16_t i = 21; i < 25; i++) {  // 2nd row
+      strip.setPixelColor(i, color);
+    }
+  }
+
+  if (langLEDlayout == 2) {  // NL:
+    for (uint16_t i = 75; i < 79; i++) {
+      strip.setPixelColor(i, color);
+    }
+    for (uint16_t i = 81; i < 85; i++) {  // 2nd row
+      strip.setPixelColor(i, color);
+    }
+  }
+
+  if (langLEDlayout == 3) {  // SWE:
+    for (uint16_t i = 0; i < 4; i++) {
+      strip.setPixelColor(i, color);
+    }
+    for (uint16_t i = 28; i < 32; i++) {  // 2nd row
+      strip.setPixelColor(i, color);
+    }
+  }
+
+  if (langLEDlayout == 4) {      // IT:
+    setLEDcol(233, 233, color);  // W
+    setLEDcol(246, 246, color);  // 2nd row
+    setLEDcol(231, 231, color);  // I
+    setLEDcol(248, 248, color);  // 2nd row
+    setLEDcol(226, 226, color);  // F
+    setLEDcol(253, 253, color);  // 2nd row
+    setLEDcol(224, 224, color);  // I
+    setLEDcol(255, 255, color);  // 2nd row
+  }
+
+  if (langLEDlayout == 5) {      // FR:
+    setLEDcol(239, 239, color);  // W
+    setLEDcol(240, 240, color);  // 2nd row
+    setLEDcol(237, 237, color);  // I
+    setLEDcol(242, 242, color);  // 2nd row
+    setLEDcol(232, 232, color);  // F
+    setLEDcol(247, 247, color);  // 2nd row
+    setLEDcol(224, 224, color);  // I
+    setLEDcol(255, 255, color);  // 2nd row
+  }
+
+  if (langLEDlayout == 6) {    // GSW:
+    setLEDcol(7, 10, color);   // WIFI
+    setLEDcol(21, 24, color);  // 2nd row
+  }
+
+  if (langLEDlayout == 7) {    // CN:
+    setLEDcol(42, 43, color);  // WIFI
+    setLEDcol(52, 53, color);  // 2nd row
+  }
+
+  if (langLEDlayout == 8) {    // SWABIAN:
+    setLEDcol(12, 13, color);  // WI
+    setLEDcol(18, 19, color);  // 2nd row
+    setLEDcol(7, 8, color);    // FI
+    setLEDcol(23, 24, color);  // 2nd row
+  }
+
+  strip.show();
+}
+
+
+// ###########################################################################################################################################
+// # Wifi scan function to help you to setup your WiFi connection
+// ###########################################################################################################################################
+void ScanWiFi() {
+  Serial.println("Scan WiFi networks - START");
+  int n = WiFi.scanNetworks();
+  Serial.println("WiFi scan done");
+  if (n == 0) {
+    Serial.println("No WiFi networks found");
+  } else {
+    Serial.print(n);
+    Serial.println(" WiFi networks found");
+    for (int i = 0; i < n; ++i) {
+      // Print SSID and RSSI for each network found
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(")");
+      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
+      delay(10);
+    }
+  }
+  Serial.println("Scan WiFi networks - END");
+}
+
+
+// ###########################################################################################################################################
+// # Captive Portal web page to setup the device by AWSW:
+// ###########################################################################################################################################
+const char index_html[] PROGMEM = R"=====(
+  <!DOCTYPE html><html><head><title>WordClock</title></head>
+          <style>
+      body {
+      padding: 25px;
+      font-size: 25px;
+      background-color: black;
+      color: white;
+      }
+      </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+   <style>
+    .button {
+      display: inline-block;
+      padding: 15px 25px;
+      font-size: 24px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      outline: none;
+      color: #fff;
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 9px #999;
+    }
+    .button:hover {background-color: #3e8e41}
+    .button:active {
+      background-color: #3e8e41;
+      box-shadow: 0 5px #666;
+      transform: translateY(4px);
+    }
+    </style>
+  
+  <body>
+    <form action="/start" name="myForm">
+      <center><b><h1>Welcome to the WordClock setup</h1></b>
+      <h2>Please add your local WiFi credentials<br/><br/>and set your language on the next page</h2><br/>
+      <input type="submit" value="Configure WordClock" class="button">
+     </center></form></body>
+  </html>
+ )=====";
+
+
+// ###########################################################################################################################################
+// # Captive Portal web page to setup the device by AWSW:
+// ###########################################################################################################################################
+const char config_html[] PROGMEM = R"rawliteral(
+ <!DOCTYPE HTML><html><head><title>WordClock</title>
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script language="JavaScript">
+  <!--
+  function validateForm() {
+  var x = document.forms["myForm"]["mySSID"].value;
+  if (x == "") {
+    alert("WiFi SSID must be set");
+    return false;
+  }
+  var y = document.forms["myForm"]["myPW"].value;
+  if (y == "") {
+    alert("WiFi password must be set");
+    return false;
+  }
+  } 
+  //-->
+  </script>
+  </head>
+  
+   <style>
+      body {
+      padding: 25px;
+      font-size: 25px;
+      background-color: black;
+      color: white;
+      }
+      </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+   <style>
+    .button {
+      display: inline-block;
+      padding: 15px 25px;
+      font-size: 24px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      outline: none;
+      color: #fff;
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 9px #999;
+    }
+    .button:hover {background-color: #3e8e41}
+    .button:active {
+      background-color: #3e8e41;
+      box-shadow: 0 5px #666;
+      transform: translateY(4px);
+    }
+    </style>
+  
+  <body>
+  <form action="/get" name="myForm" onsubmit="return validateForm()" >
+    <center><b><h1>Initial WordClock setup:</h1></b>
+    <label for="mySSID">Enter your WiFi SSID:</label><br/>
+    <input type="text" id="mySSID" name="mySSID" value="" style="width: 200px;" /><br/><br/>
+    <label for="myPW">Enter your WiFi password:</label><br/>
+    <input type="text" id="myPW" name="myPW" value="" style="width: 200px;" /><br/><br/>
+    <label for="setlanguage">Select your language layout:</label><br/>
+    <select id="setlanguage" name="setlanguage" style="width: 200px;">
+    <option value=0 selected>GERMAN</option>
+    <option value=1>ENGLISH</option>
+    <option value=2>DUTCH</option>
+    <option value=3>SWEDISH</option>
+    <option value=4>ITALIAN</option>
+    <option value=5>FRENCH</option>
+    <option value=6>SWISS GERMAN</option>
+    <option value=7>CHINESE</option>
+    <option value=8>SWABIAN GERMAN</option>
+    </select><br/><br/>
+    <input type="submit" value="Save values and start WordClock" class="button">
+  </center></form></body></html>)rawliteral";
+
+
+// ###########################################################################################################################################
+// # Captive Portal web page to setup the device by AWSW:
+// ###########################################################################################################################################
+const char saved_html[] PROGMEM = R"rawliteral(
+ <!DOCTYPE HTML><html><head>
+  <title>Initial WordClock setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"></head>
+    <style>
+  body {
+      padding: 25px;
+      font-size: 25px;
+      background-color: black;
+      color: white;
+    }
+  </style>
+  <body>
+    <center><h2><b>Settings saved...<br><br>
+    WordClock will now try to connect to the named WiFi with the set language.<br>
+    If it failes the WIFI leds will flash red and then please try to connect to the temporary access point again.<br>
+    Please close this page now and enjoy your WordClock. =)</h2></b>
+ </body></html>)rawliteral";
+
+
+// ###########################################################################################################################################
+// # Captive Portal by AWSW to avoid the usage of the WiFi Manager library to have more control
+// ###########################################################################################################################################
+const char* PARAM_INPUT_1 = "mySSID";
+const char* PARAM_INPUT_2 = "myPW";
+const char* PARAM_INPUT_3 = "setlanguage";
+const String captiveportalURL = "http://192.168.4.1";
+void CaptivePotalSetup() {
+  ScanWiFi();
+  const char* temp_ssid = "WordClock";
+  const char* temp_password = "";
+  WiFi.softAP(temp_ssid, temp_password);
+  Serial.println(" ");
+  Serial.println(" ");
+  Serial.println(" ");
+  Serial.println("#################################################################################################################################################################################");
+  Serial.print("# Temporary WiFi access point initialized. Please connect to the WiFi access point now and set your local WiFi credentials and WordClock language. Access point name: ");
+  Serial.println(temp_ssid);
+  Serial.print("# In case your browser does not open the WordClock setup page automatically after connecting to the access point, please navigate to this URL manually to http://");
+  Serial.println(WiFi.softAPIP());
+  Serial.println("#################################################################################################################################################################################");
+  Serial.println(" ");
+  Serial.println(" ");
+  Serial.println(" ");
+  dnsServer.start(53, "*", WiFi.softAPIP());
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send_P(200, "text/html", index_html);
+  });
+
+  server.on("/get", HTTP_GET, [](AsyncWebServerRequest* request) {
+    String inputMessage;
+    String inputParam;
+    if (request->hasParam(PARAM_INPUT_1)) {
+      inputMessage = request->getParam(PARAM_INPUT_1)->value();
+      inputParam = PARAM_INPUT_1;
+      // Serial.println(inputMessage);
+      preferences.putString("WIFIssid", inputMessage);  // Save entered WiFi SSID
+      inputMessage = request->getParam(PARAM_INPUT_2)->value();
+      inputParam = PARAM_INPUT_2;
+      // Serial.println(inputMessage);
+      preferences.putString("WIFIpass", inputMessage);  // Save entered WiFi password
+      inputMessage = request->getParam(PARAM_INPUT_3)->value();
+      inputParam = PARAM_INPUT_3;
+      // Serial.println(inputMessage);
+      preferences.putUInt("langLEDlayout", inputMessage.toInt());  // Save entered layout language
+      delay(250);
+      preferences.end();
+    } else {
+      inputMessage = "No message sent";
+      inputParam = "none";
+    }
+    request->send_P(200, "text/html", saved_html);
+    ResetTextLEDs(strip.Color(0, 255, 0));
+    delay(1000);
+    ESP.restart();
+  });
+
+  server.on("/start", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send_P(200, "text/html", config_html);
+  });
+
+  server.on("/connecttest.txt", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("msftconnecttest.com", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/fwlink", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/wpad.dat", [](AsyncWebServerRequest* request) {
+    request->send(404);
+  });
+  server.on("/generate_204", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/redirect", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/hotspot-detect.html", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/canonical.html", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/success.txt", [](AsyncWebServerRequest* request) {
+    request->send(200);
+  });
+  server.on("/ncsi.txt", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/chrome-variations/seed", [](AsyncWebServerRequest* request) {
+    request->send(200);
+  });
+  server.on("/service/update2/json", [](AsyncWebServerRequest* request) {
+    request->send(200);
+  });
+  server.on("/chat", [](AsyncWebServerRequest* request) {
+    request->send(404);
+  });
+  server.on("/startpage", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+  server.on("/favicon.ico", [](AsyncWebServerRequest* request) {
+    request->send(404);
+  });
+
+  server.on("/", HTTP_ANY, [](AsyncWebServerRequest* request) {
+    AsyncWebServerResponse* response = request->beginResponse(200, "text/html", index_html);
+    response->addHeader("Cache-Control", "public,max-age=31536000");
+    request->send(response);
+    Serial.println("Served Basic HTML Page");
+  });
+
+  server.onNotFound([](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.print("onnotfound ");
+    Serial.print(request->host());
+    Serial.print(" ");
+    Serial.print(request->url());
+    Serial.print(" sent redirect to " + captiveportalURL + "\n");
+  });
+
+  server.begin();
+  Serial.println("WordClock Captive Portal web server started");
+}
+
+
+// ###########################################################################################################################################
+// # Wifi setup and reconnect function that runs once at startup and during the loop function of the ESP:
+// ###########################################################################################################################################
+void WIFI_SETUP() {
+  Serial.println(" ");
+  esp_log_level_set("wifi", ESP_LOG_WARN);  // Disable WiFi debug warnings
+  if (testTime == 0) {                      // If time text test mode is NOT used:
+    String WIFIssid = preferences.getString("WIFIssid");
+    bool WiFiConfigEmpty = false;
+    if (WIFIssid == "") {
+      // Serial.println("WIFIssid empty");
+      WiFiConfigEmpty = true;
+    } else {
+      // Serial.print("WIFIssid = ");
+      // Serial.println(WIFIssid);
+    }
+    String WIFIpass = preferences.getString("WIFIpass");
+    if (WIFIpass == "") {
+      // Serial.println("WIFIpass empty");
+      WiFiConfigEmpty = true;
+    } else {
+      // Serial.print("WIFIpass = ");
+      // Serial.println(WIFIpass);
+    }
+    if (WiFiConfigEmpty == true) {
+      Serial.println("Show SET WIFI...");
+      uint32_t c = strip.Color(0, 255, 255);
+      int TextWait = 500;
+      showtext("S", TextWait, c);
+      showtext("E", TextWait, c);
+      showtext("T", TextWait, c);
+      showtext(" ", TextWait, c);
+      showtext("W", TextWait, c);
+      showtext("I", TextWait, c);
+      showtext("F", TextWait, c);
+      showtext("I", TextWait, c);
+      showtext(" ", TextWait, c);
+      SetWLAN(strip.Color(0, 255, 255));
+      CaptivePotalSetup();
+    } else {
+      Serial.println("Try to connect to found WiFi configuration: ");
+      WiFi.disconnect();
+      int tryCount = 0;
+      WiFi.mode(WIFI_STA);
+      WiFi.begin((const char*)WIFIssid.c_str(), (const char*)WIFIpass.c_str());
+      Serial.println("Connecting to WiFi " + String(WIFIssid));
+      while (WiFi.status() != WL_CONNECTED) {
+        SetWLAN(strip.Color(0, 0, 255));
+        tryCount = tryCount + 1;
+        Serial.print("Connection try #: ");
+        Serial.println(tryCount);
+        if (tryCount >= maxWiFiconnctiontries - 10) {
+          SetWLAN(strip.Color(255, 0, 0));
+        }
+        if (tryCount == maxWiFiconnctiontries) {
+          Serial.println("\n\nWIFI CONNECTION ERROR: If the connection still can not be established please check the WiFi settings or location of the device.\n\n");
+          preferences.putString("WIFIssid", "");  // Reset entered WiFi ssid
+          preferences.putString("WIFIpass", "");  // Reset entered WiFi password
+          preferences.end();
+          delay(250);
+          Serial.println("WiFi settings deleted because in " + String(maxWiFiconnctiontries) + " tries the WiFi connection could not be established. Temporary WordClock access point will be started to reconfigure WiFi again.");
+          ESP.restart();
+        }
+        delay(500);
+        SetWLAN(strip.Color(0, 0, 0));
+        delay(500);
+      }
+      Serial.println(" ");
+      WiFIsetup = true;
+      Serial.print("Successfully connected now to WiFi SSID: ");
+      Serial.println(WiFi.SSID());
+      Serial.println("IP: " + WiFi.localIP().toString());
+      Serial.println("DNS: " + WiFi.dnsIP().toString());
+      SetWLAN(strip.Color(0, 255, 0));
+      delay(1000);
+
+      if (useStartupText == 1) callStartText();  // Show "WordClock" startup text
+      if (useshowip == 1) ShowIPaddress();       // Display the current IP-address
+      configNTPTime();                           // NTP time setup
+      setupWebInterface();                       // Generate the configuration page
+      updatenow = true;                          // Update the display 1x after startup
+      update_display();                          // Update LED display
+      handleLEDupdate();                         // LED update via web
+      setupOTAupate();                           // ESP32 OTA update
+      Serial.println("######################################################################");
+      Serial.println("# Web interface online at: http://" + IpAddress2String(WiFi.localIP()));
+      Serial.println("# HTTP controls online at: http://" + IpAddress2String(WiFi.localIP()) + ":2023");
+      Serial.println("######################################################################");
+      Serial.println("# WordClock startup finished...");
+      Serial.println("######################################################################");
+      Serial.println(" ");
+    }
+  }
+}
+
+// ###########################################################################################################################################
+// # ESP32 OTA update:
+// ###########################################################################################################################################
+const char otaserverIndex[] PROGMEM = R"=====(
+  <!DOCTYPE html><html><head><title>WordClock</title></head>
+      <style>
+      body {
+      padding: 25px;
+      font-size: 25px;
+      background-color: black;
+      color: white;
+      }
+      </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <body>
+    <form method='POST' action='/update' enctype='multipart/form-data'>
+      <center><b><h1>WordClock software update</h1></b>
+      <h2>Please select the in the Arduino IDE > "Sketch" ><br/>"Export Compiled Binary (Alt+Ctrl+S)"<br/>to generate the required .BIN file.<br/>
+      Use the "Update" button 1x to start the update.<br/><br/>WordClock will restart automatically.</h2><br/>
+      <input type='file' name='update'>       <input type='submit' value='Update'>
+     </center></form></body>
+  </html>
+ )=====";
+
+
+const char otaNOK[] PROGMEM = R"=====(
+  <!DOCTYPE html><html><head><title>WordClock</title></head>
+          <style>
+      body {
+      padding: 25px;
+      font-size: 25px;
+      background-color: black;
+      color: white;
+      }
+      </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <style>
+    .button {
+      display: inline-block;
+      padding: 15px 25px;
+      font-size: 24px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      outline: none;
+      color: #fff;
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 9px #999;
+    }
+    .button:hover {background-color: #3e8e41}
+    .button:active {
+      background-color: #3e8e41;
+      box-shadow: 0 5px #666;
+      transform: translateY(4px);
+    }
+    </style>
+    <body>
+      <center><b><h1>WordClock software update</h1></b>
+      <h2>ERROR: Software update FAILED !!!<br/><br/>WordClock will restart automatically.</h2><br/>
+      </center></body>
+  </html>
+ )=====";
+
+
+const char otaOK[] PROGMEM = R"=====(
+  <!DOCTYPE html><html><head><title>WordClock</title></head>
+          <style>
+      body {
+      padding: 25px;
+      font-size: 25px;
+      background-color: black;
+      color: white;
+      }
+      </style>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <style>
+    .button {
+      display: inline-block;
+      padding: 15px 25px;
+      font-size: 24px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      outline: none;
+      color: #fff;
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 9px #999;
+    }
+    .button:hover {background-color: #3e8e41}
+    .button:active {
+      background-color: #3e8e41;
+      box-shadow: 0 5px #666;
+      transform: translateY(4px);
+    }
+    </style>
+    <body>
+      <center><b><h1>WordClock software update</h1></b>
+      <h2>Software update done =)<br/><br/>WordClock will restart automatically.</h2><br/>
+      </center></body>
+  </html>
+ )=====";
+
+
+void setupOTAupate() {
+  otaserver.on("/", HTTP_GET, []() {
+    otaserver.sendHeader("Connection", "close");
+    otaserver.send(200, "text/html", otaserverIndex);
+  });
+
+  otaserver.on(
+    "/update", HTTP_POST, []() {
+      otaserver.sendHeader("Connection", "close");
+      if (Update.hasError()) {
+        otaserver.send(200, "text/html", otaNOK);
+        ResetTextLEDs(strip.Color(255, 0, 0));
+      } else {
+        otaserver.send(200, "text/html", otaOK);
+        ResetTextLEDs(strip.Color(0, 255, 0));
+      }
+      delay(3000);
+      ESP.restart();
+    },
+    []() {
+      HTTPUpload& upload = otaserver.upload();
+      if (upload.status == UPLOAD_FILE_START) {
+        Serial.setDebugOutput(true);
+        Serial.printf("Update: %s\n", upload.filename.c_str());
+        if (!Update.begin()) {
+          Update.printError(Serial);
+        }
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+          Update.printError(Serial);
+        }
+      } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) {
+          Serial.printf("Update success: %u\nRebooting...\n", upload.totalSize);
+        } else {
+          Update.printError(Serial);
+        }
+        Serial.setDebugOutput(false);
+      } else {
+        Serial.printf("Update failed unexpectedly (likely broken connection): status=%d\n", upload.status);
+      }
+    });
+  otaserver.begin();
+}
+
 
 // ###########################################################################################################################################
 // # EOF - You have successfully reached the end of the code - well done ;-)

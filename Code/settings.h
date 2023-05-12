@@ -9,7 +9,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V2.2.0
+// # Compatible with WordClock version: V2.5.0
 // #
 // ###########################################################################################################################################
 /*
@@ -25,6 +25,24 @@
     \::/  /       \::/  /       |:|  |        \::/__/       \:\__\        \:\__\    \::/  /       \:\__\        |:|  |    
      \/__/         \/__/         \|__|         ~~            \/__/         \/__/     \/__/         \/__/         \|__|    
 */
+
+
+// ###########################################################################################################################################
+// # LED language layout default: !!! SET YOUR DEFAULT LANGUAGE HERE !!!
+// ###########################################################################################################################################
+int langLEDlayout_default = 0;
+// Available languages:
+// ####################
+// 0 = DE   - GERMAN
+// 1 = EN   - ENGLISH
+// 2 = NL   - DUTCH
+// 3 = SWE  - SWEDISH
+// 4 = IT   - ITALIAN
+// 5 = FR   - FRENCH
+// 6 = GSW  - SWISS GERMAN
+// 7 = CN   - CHINESE
+// 8 = SCHWB - SWABIAN GERMAN
+// NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
 // ###########################################################################################################################################
@@ -51,24 +69,6 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ
 
 
 // ###########################################################################################################################################
-// # LED language layout default: !!! SET YOUR DEFAULT LANGUAGE HERE !!!
-// ###########################################################################################################################################
-int langLEDlayout_default = 0;  // LED language layout default
-// Available languages:
-// ####################
-// 0 = DE    - GERMAN
-// 1 = EN    - ENGLISH
-// 2 = NL    - DUTCH
-// 3 = SWE   - SWEDISH
-// 4 = IT    - ITALIAN
-// 5 = FR    - FRENCH
-// 6 = GSW   - SWISS GERMAN
-// 7 = CN    - CHINESE
-// 8 = SCHWB - SWABIAN GERMAN
-// NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
-
-
-// ###########################################################################################################################################
 // # LED defaults:
 // ###########################################################################################################################################
 int redVal_back_default = 0;      // Default background color RED
@@ -87,10 +87,11 @@ int day_time_stop_default = 22;   // Define day mode end --> time after is then 
 // ###########################################################################################################################################
 // # Various default settings:
 // ###########################################################################################################################################
-#define AP_TIMEOUT 240         // Timeout in seconds for AP / WLAN config
-int useshowip_default = 1;     // Show the current ip at boot
-int usesinglemin_default = 1;  // Show the single minutes
-int RandomColor_default = 0;   // Change text color every minute in random color
+int useshowip_default = 1;       // Show the current ip at boot
+int usesinglemin_default = 1;    // Show the single minutes
+int RandomColor_default = 0;     // Change text color every minute in random color
+int useStartupText_default = 1;  // Show the "WordClock" text at boot
+int maxWiFiconnctiontries = 30;  // Maximum connection tries to logon to the set WiFi. After the amount of tries is reached the WiFi settings will be deleted!
 
 
 // ###########################################################################################################################################
