@@ -1,6 +1,6 @@
 // ###########################################################################################################################################
 // #
-// # WordClock code for the 2 printables WordClock 16x16 matrix projects:
+// # WordClock code for the 3 printables WordClock 16x16 matrix projects:
 // # https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1
 // # https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2
 // # https://www.printables.com/de/model/450556-wordclock-16x16-led-matrix-2023-v3
@@ -9,7 +9,7 @@
 // #
 // # Released under license: GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE
 // #
-// # Compatible with WordClock version: V2.5.0
+// # Compatible with WordClock version: V2.6.0
 // #
 // ###########################################################################################################################################
 /*
@@ -42,6 +42,7 @@ int langLEDlayout_default = 0;
 // 6 = GSW  - SWISS GERMAN
 // 7 = CN   - CHINESE
 // 8 = SCHWB - SWABIAN GERMAN
+// 9 = BAY - BAVARIAN
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
@@ -117,8 +118,8 @@ int testPrintTimeTexts = 0;  // Print the time texts shown on the display in the
 int testDayNightmode = 0;    // Test the day/night mode settings
 // Test a special time:
 int testspecialtime = 0;  // Use test a special time function
-int test_hour = 23;       // Test a special time: hour
-int test_minute = 19;     // Test a special time: minute
+int test_hour = 9;       // Test a special time: hour
+int test_minute = 38;     // Test a special time: minute
 
 
 // ###########################################################################################################################################

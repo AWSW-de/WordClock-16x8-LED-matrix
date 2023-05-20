@@ -14,6 +14,7 @@ The designs are available in:
 - Swiss German
 - Chinese
 - Swabian German
+- Bavarian
 
 Happy printing =)
 
@@ -31,12 +32,12 @@ Images of 2023-V1 with stencil font and 2023-V2 and 2023-V3 with regular font:
 
 <img src="./Images/IMG_1119.jpg">
 
-<img src="./Images/IMG_2578.jpg">
-
-<img src="./Images/IMG_2579.jpg">
-
 <img src="./Images/IMG_0782.jpg">
 
 <img src="./Images/A0B50A9B-8A43-4066-939B-C25B38242FDF.jpeg">
+
+<img src="./Images/IMG_2578.jpg">
+
+<img src="./Images/IMG_2579.jpg">
 
 <hr>
