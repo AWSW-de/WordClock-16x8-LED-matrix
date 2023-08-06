@@ -7,7 +7,7 @@
 // #
 // # Code by https://github.com/AWSW-de
 // #
-// # Released under licenses: 
+// # Released under licenses:
 // # GNU General Public License v3.0: https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023/blob/main/LICENSE and
 // # Creative Commons Attribution-NonCommercial 3.0 Unported License http://creativecommons.org/licenses/by-nc/3.0
 // # Important: NonCommercial — You may not use the material for commercial purposes !
@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.6.1";
+const char* WORD_CLOCK_VERSION = "V2.6.2";
 
 
 // ###########################################################################################################################################
@@ -289,8 +289,8 @@ void setupWebInterface() {
   // Update URL
   ESPUI.label("Update URL", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":8080");
 
-      // AWSW software GitHub repository:
-    ESPUI.label("Download newer software updates here", ControlColor::Dark, "https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023");
+  // AWSW software GitHub repository:
+  ESPUI.label("Download newer software updates here", ControlColor::Dark, "https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023");
 
 
 
@@ -333,6 +333,15 @@ void setupWebInterface() {
 
   // Reset WordClock settings:
   ESPUI.button("Reset WordClock settings", &buttonWordClockReset, ControlColor::Dark, "Reset WordClock settings", (void*)3);
+
+
+
+  // Section License:
+  // ####################
+  ESPUI.separator("License information:");
+
+  // License information:
+  ESPUI.label("License information", ControlColor::Dark, "NonCommercial — You may not use the project for commercial purposes!");
 
 
 
@@ -3671,9 +3680,9 @@ void initTime(String timezone) {
     ClearDisplay();
     strip.show();
     delay(250);
-    Serial.println("! Failed to obtain time - Time server could not be reached ! --> Try: " + String(TimeResetCounter) + " of 15...");
+    Serial.println("! Failed to obtain time - Time server could not be reached ! --> Try: " + String(TimeResetCounter) + " of 3...");
     TimeResetCounter = TimeResetCounter + 1;
-    if (TimeResetCounter == 16) {
+    if (TimeResetCounter == 4) {
       Serial.println("! Failed to obtain time - Time server could not be reached ! --> RESTART THE DEVICE NOW...");
       ESP.restart();
     }
