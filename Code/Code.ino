@@ -56,7 +56,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.6.0";
+const char* WORD_CLOCK_VERSION = "V2.6.1";
 
 
 // ###########################################################################################################################################
@@ -285,6 +285,9 @@ void setupWebInterface() {
 
   // Update URL
   ESPUI.label("Update URL", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":8080");
+
+      // AWSW software GitHub repository:
+    ESPUI.label("Download newer software updates here", ControlColor::Dark, "https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023");
 
 
 
