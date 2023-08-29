@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.6.2";
+const char* WORD_CLOCK_VERSION = "V2.6.3";
 
 
 // ###########################################################################################################################################
@@ -2115,20 +2115,6 @@ void show_time(int hours, int minutes) {
   // ########################################################### IT:
   if (langLEDlayout == 4) {  // IT:
 
-    // SONO LE:
-    setLEDcol(9, 10, colorRGB);   // LE
-    setLEDcol(21, 22, colorRGB);  // 2nd row
-    setLEDcol(12, 15, colorRGB);  // SONO
-    setLEDcol(16, 19, colorRGB);  // 2nd row
-    if (testPrintTimeTexts == 1) {
-      Serial.println("");
-      Serial.print(hours);
-      Serial.print(":");
-      Serial.print(minutes);
-      Serial.print(" --> SONO LE ");
-    }
-
-
     //set hour from 1 to 12 (at noon, or midnight)
     int xHour = (iHour % 12);
     if (xHour == 0)
@@ -2141,6 +2127,20 @@ void show_time(int hours, int minutes) {
         xHour++;
     }
 
+    // SONO LE:
+    if (xHour > 1) { // NOTE: Displayed only from 2 to 23
+      setLEDcol(9, 10, colorRGB);   // LE
+      setLEDcol(21, 22, colorRGB);  // 2nd row
+      setLEDcol(12, 15, colorRGB);  // SONO
+      setLEDcol(16, 19, colorRGB);  // 2nd row
+      if (testPrintTimeTexts == 1) {
+        Serial.println("");
+        Serial.print(hours);
+        Serial.print(":");
+        Serial.print(minutes);
+        Serial.print(" --> SONO LE ");
+      }
+    }
 
     switch (xHour) {
       case 1:
