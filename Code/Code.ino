@@ -37,7 +37,7 @@
 // # - Adafruit NeoPixel      // by Adafruit:                     https://github.com/adafruit/Adafruit_NeoPixel
 // # - AsyncTCP               // by me-no-dev:                    https://github.com/me-no-dev/AsyncTCP
 // # - ESPAsyncWebServer      // by me-no-dev:                    https://github.com/me-no-dev/ESPAsyncWebServer
-// # - ESPUI                  // by s00500:                       https://github.com/s00500/ESPUI
+// # - ESPUI                  // by s00500:                       https://github.com/s00500/ESPUI/archive/refs/tags/2.2.3.zip
 // # - ArduinoJson            // by bblanchon:                    https://github.com/bblanchon/ArduinoJson
 // # - LITTLEFS               // by lorol:                        https://github.com/lorol/LITTLEFS
 // #
@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.6.3";
+const char* WORD_CLOCK_VERSION = "V2.6.4";
 
 
 // ###########################################################################################################################################
