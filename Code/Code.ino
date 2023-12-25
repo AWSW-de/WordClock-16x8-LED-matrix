@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.6.4";
+const char* WORD_CLOCK_VERSION = "V2.6.5";
 
 
 // ###########################################################################################################################################
@@ -110,7 +110,7 @@ bool WiFIsetup = false;
 // ###########################################################################################################################################
 void setup() {
   Serial.begin(115200);
-  delay(250);
+  delay(1000);
   Serial.println("######################################################################");
   Serial.print("# WordClock startup of version: ");
   Serial.println(WORD_CLOCK_VERSION);
@@ -2128,7 +2128,7 @@ void show_time(int hours, int minutes) {
     }
 
     // SONO LE:
-    if (xHour > 1) { // NOTE: Displayed only from 2 to 23
+    if (xHour > 1) {                // NOTE: Displayed only from 2 to 23
       setLEDcol(9, 10, colorRGB);   // LE
       setLEDcol(21, 22, colorRGB);  // 2nd row
       setLEDcol(12, 15, colorRGB);  // SONO
@@ -3680,12 +3680,6 @@ void initTime(String timezone) {
     ClearDisplay();
     strip.show();
     delay(250);
-    Serial.println("! Failed to obtain time - Time server could not be reached ! --> Try: " + String(TimeResetCounter) + " of 3...");
-    TimeResetCounter = TimeResetCounter + 1;
-    if (TimeResetCounter == 4) {
-      Serial.println("! Failed to obtain time - Time server could not be reached ! --> RESTART THE DEVICE NOW...");
-      ESP.restart();
-    }
 
     if (langLEDlayout == 0) {  // DE:
       setLEDcol(1, 4, strip.Color(255, 0, 0));
@@ -3756,6 +3750,14 @@ void initTime(String timezone) {
     strip.show();
     delay(250);
     ClearDisplay();
+    delay(250);
+
+    Serial.println("! Failed to obtain time - Time server could not be reached ! --> Try: " + String(TimeResetCounter) + " of 3...");
+    TimeResetCounter = TimeResetCounter + 1;
+    if (TimeResetCounter == 4) {
+      Serial.println("! Failed to obtain time - Time server could not be reached ! --> RESTART THE DEVICE NOW...");
+      ESP.restart();
+    }
   }
 
   // Time successfully received:
@@ -3844,12 +3846,14 @@ void printLocalTime() {
   iHour = timeinfo.tm_hour;
   iMinute = timeinfo.tm_min;
   iSecond = timeinfo.tm_sec;
-  // Serial.print("Time: ");
-  // Serial.print(iHour);
-  // Serial.print(":");
-  // Serial.print(iMinute);
-  // Serial.print(":");
-  // Serial.println(iSecond);
+  if (ShowTimeEachSecond == 1) {
+    Serial.print("Current time: ");
+    Serial.print(iHour);
+    Serial.print(":");
+    Serial.print(iMinute);
+    Serial.print(":");
+    Serial.println(iSecond);
+  }
   delay(1000);
 }
 // ###########################################################################################################################################
