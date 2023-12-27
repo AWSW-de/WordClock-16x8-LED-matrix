@@ -46,6 +46,7 @@ int langLEDlayout_default = 0;
 // 7 = CN   - CHINESE
 // 8 = SCHWB - SWABIAN GERMAN
 // 9 = BAY - BAVARIAN
+// 10 = LTZ - LUXEMBURGISH
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
