@@ -3268,7 +3268,7 @@ void show_time(int hours, int minutes) {
       case 5:
         {
           setLEDcol(160, 165, colorRGB);  // FËNNEF
-          setLEDcol(186, 187, colorRGB);  // 2nd row
+          setLEDcol(186, 191, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("FËNNEF ");
           break;
         }
