@@ -1271,7 +1271,7 @@ void ResetTextLEDs(uint32_t color) {
 // ###########################################################################################################################################
 void setLEDcol(int ledNrFrom, int ledNrTo, uint32_t color) {
   if (ledNrFrom > ledNrTo) {
-    setLED(ledNrTo, ledNrFrom, 1);  // Sets LED numbers in correct order
+    setLEDcol(ledNrTo, ledNrFrom, color);  // Sets LED numbers in correct order
   } else {
     for (int i = ledNrFrom; i <= ledNrTo; i++) {
       if ((i >= 0) && (i < NUMPIXELS))
