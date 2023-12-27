@@ -54,6 +54,7 @@ int langLEDlayout_default = 0;
 // ###########################################################################################################################################
 #define LEDPIN 32      // Arduino-Pin connected to the NeoPixels
 #define NUMPIXELS 256  // How many NeoPixels are attached to the Arduino
+#define ROWPIXELS 16  // How many NeoPixels per row
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
 
 

@@ -1267,17 +1267,32 @@ void ResetTextLEDs(uint32_t color) {
 
 
 // ###########################################################################################################################################
-// # Actual function, which controls 1/0 of the LED with color value:
+// # Actual function, which controls 1/0 of the LED and their sibling with color value:
 // ###########################################################################################################################################
 void setLEDcol(int ledNrFrom, int ledNrTo, uint32_t color) {
   if (ledNrFrom > ledNrTo) {
     setLEDcol(ledNrTo, ledNrFrom, color);  // Sets LED numbers in correct order
   } else {
     for (int i = ledNrFrom; i <= ledNrTo; i++) {
-      if ((i >= 0) && (i < NUMPIXELS))
+      if ((i >= 0) && (i < NUMPIXELS)) {
         strip.setPixelColor(i, color);
+        int pairedLED = getPairedLED(i);
+        if ((pairedLED >= 0) && (pairedLED < NUMPIXELS))
+          strip.setPixelColor(pairedLED, color);
+      }
     }
   }
+}
+
+
+// ###########################################################################################################################################
+// # Get the sibling led for a two-led lit character (with 32 leds / 16 chars per row):
+// ###########################################################################################################################################
+int getPairedLED(int ledNumber) {
+    const int ledsPerLine = ROWPIXELS * 2;
+    int row = ledNumber / ledsPerLine; 
+    int positionInRow = ledNumber % ledsPerLine;
+    return row * ledsPerLine + (ledsPerLine - 1 - positionInRow);
 }
 
 
@@ -3644,8 +3659,12 @@ void setLED(int ledNrFrom, int ledNrTo, int switchOn) {
     setLED(ledNrTo, ledNrFrom, switchOn);  // Sets LED numbers in correct order
   } else {
     for (int i = ledNrFrom; i <= ledNrTo; i++) {
-      if ((i >= 0) && (i < NUMPIXELS))
+      if ((i >= 0) && (i < NUMPIXELS)) {
         strip.setPixelColor(i, strip.Color(redVal_time, greenVal_time, blueVal_time));
+        int pairedLED = getPairedLED(i);
+        if ((pairedLED >= 0) && (pairedLED < NUMPIXELS))
+          strip.setPixelColor(pairedLED, strip.Color(redVal_time, greenVal_time, blueVal_time));  
+      }
     }
   }
   if (switchOn == 0) {
