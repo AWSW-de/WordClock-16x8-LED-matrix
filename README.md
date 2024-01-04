@@ -15,6 +15,7 @@ The designs are available in:
 - Chinese
 - Swabian German
 - Bavarian
+- Luxemburgish 
 
 Happy printing =)
 
