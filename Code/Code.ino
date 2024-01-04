@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.7.0";
+const char* WORD_CLOCK_VERSION = "V2.8.0";
 
 
 // ###########################################################################################################################################
@@ -77,7 +77,7 @@ DNSServer dnsServer;
 // # Declartions and variables used in the functions:
 // ###########################################################################################################################################
 Preferences preferences;
-int langLEDlayout;
+int langLEDlayout, statusLanguageID;
 int iHour = 0;
 int iMinute = 0;
 int iSecond = 0;
@@ -95,14 +95,16 @@ int intensity, intensity_day, intensity_night, intensity_web;
 int set_web_intensity = 0;
 int usenightmode, day_time_start, day_time_stop, statusNightMode;
 int useshowip, usesinglemin, useStartupText;
-int statusLabelID, statusNightModeID, statusLanguageID, intensity_web_HintID, DayNightSectionID, LEDsettingsSectionID;
+int statusLabelID, statusNightModeID, intensity_web_HintID, DayNightSectionID, LEDsettingsSectionID;
 int sliderBrightnessDayID, switchNightModeID, sliderBrightnessNightID, call_day_time_startID, call_day_time_stopID;
-char* selectLang;
 int RandomColor;
 uint16_t text_colour_background;
 uint16_t text_colour_time;
 int switchRandomColorID, switchSingleMinutesID;
 bool WiFIsetup = false;
+String selectLangTXT;
+uint16_t selectLang;
+
 
 
 // ###########################################################################################################################################
@@ -298,27 +300,37 @@ void setupWebInterface() {
   // #################
   ESPUI.separator("Language:");
 
-  // Set layout language:
-  if (langLEDlayout == 0) selectLang = "German";
-  if (langLEDlayout == 1) selectLang = "English";
-  if (langLEDlayout == 2) selectLang = "Dutch";
-  if (langLEDlayout == 3) selectLang = "Swedish";
-  if (langLEDlayout == 4) selectLang = "Italian";
-  if (langLEDlayout == 5) selectLang = "French";
-  if (langLEDlayout == 6) selectLang = "Swiss German";
-  if (langLEDlayout == 7) selectLang = "Chinese";
-  if (langLEDlayout == 8) selectLang = "Swabian German";
-  if (langLEDlayout == 9) selectLang = "Bavarian";
-  if (langLEDlayout == 10) selectLang = "Luxemburgish";
-
-  // Language overview:
-  ESPUI.addControl(ControlType::Label, "Available languages", "<center><table border='3' class='center' width='100%'><tr><th>Value:</th><th>Language:</th><th>Value:</th><th>Language:</th></tr><tr align='center'><td>0</td><td>German</td><td>1</td><td>English</td></tr><tr align='center'><td>2</td><td>Dutch</td><td>3</td><td>Swedish</td></tr><tr align='center'><td>4</td><td>Italian</td><td>5</td><td>French</td></tr><tr align='center'><td>6</td><td>Swiss German</td><td>7</td><td>Chinese</td></tr><tr align='center'><td>8</td><td>Swabian German</td><td>9</td><td>Bavarian</td></tr><tr align='center'><td>10</td><td>Luxemburgish</td></tr></table>", ControlColor::Dark, Control::noParent, 0);
+  // Set layout language in drop down field:
+  if (langLEDlayout == 0) selectLangTXT = "German";
+  if (langLEDlayout == 1) selectLangTXT = "English";
+  if (langLEDlayout == 2) selectLangTXT = "Dutch";
+  if (langLEDlayout == 3) selectLangTXT = "Swedish";
+  if (langLEDlayout == 4) selectLangTXT = "Italian";
+  if (langLEDlayout == 5) selectLangTXT = "French";
+  if (langLEDlayout == 6) selectLangTXT = "Swiss German";
+  if (langLEDlayout == 7) selectLangTXT = "Chinese";
+  if (langLEDlayout == 8) selectLangTXT = "Swabian German";
+  if (langLEDlayout == 9) selectLangTXT = "Bavarian";
+  if (langLEDlayout == 10) selectLangTXT = "Luxemburgish";
+  Serial.print("Selected language: ");
+  Serial.println(selectLangTXT);
 
   // Change language:
-  ESPUI.number("Select your language", call_langauge_select, ControlColor::Dark, langLEDlayout, 0, 9);
+  selectLang = ESPUI.addControl(ControlType::Select, "Change layout language", selectLangTXT, ControlColor::Dark, Control::noParent, call_langauge_select);
+  ESPUI.addControl(ControlType::Option, "German", "0", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "English", "1", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Dutch", "2", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Swedish", "3", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Italian", "4", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "French", "5", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Swiss German", "6", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Chinese", "7", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Swabian German", "8", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Bavarian", "9", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Luxemburgish", "10", ControlColor::Alizarin, selectLang);
 
   // Current language:
-  statusLanguageID = ESPUI.label("Current layout language", ControlColor::Dark, selectLang);
+  statusLanguageID = ESPUI.label("Current layout language", ControlColor::Dark, selectLangTXT);
 
 
 
@@ -333,7 +345,7 @@ void setupWebInterface() {
   ESPUI.button("Reset WiFi settings", &buttonWiFiReset, ControlColor::Dark, "Reset WiFi settings", (void*)2);
 
   // Reset WordClock settings:
-  ESPUI.button("Reset WordClock settings (except WiFi)", &buttonWordClockReset, ControlColor::Dark, "Reset WordClock settings (except WiFi)", (void*)3);
+  ESPUI.button("Reset WordClock settings (except WiFi)", &buttonWordClockReset, ControlColor::Dark, "Reset WordClock settings", (void*)3);
 
 
 
@@ -365,7 +377,7 @@ void setupWebInterface() {
 // # Read settings from flash:
 // ###########################################################################################################################################
 void getFlashValues() {
-  if (debugtexts == 1) Serial.println("Read settings from flash: START");
+  // if (debugtexts == 1) Serial.println("Read settings from flash: START");
   langLEDlayout = preferences.getUInt("langLEDlayout", langLEDlayout_default);
   redVal_time = preferences.getUInt("redVal_time", redVal_time_default);
   greenVal_time = preferences.getUInt("greenVal_time", greenVal_time_default);
@@ -382,7 +394,7 @@ void getFlashValues() {
   useStartupText = preferences.getUInt("useStartupText", useStartupText_default);
   usesinglemin = preferences.getUInt("usesinglemin", usesinglemin_default);
   RandomColor = preferences.getUInt("RandomColor", RandomColor_default);
-  if (debugtexts == 1) Serial.println("Read settings from flash: END");
+  // if (debugtexts == 1) Serial.println("Read settings from flash: END");
 }
 
 
@@ -390,7 +402,7 @@ void getFlashValues() {
 // # Write settings to flash:
 // ###########################################################################################################################################
 void setFlashValues() {
-  if (debugtexts == 1) Serial.println("Write settings to flash: START");
+  // if (debugtexts == 1) Serial.println("Write settings to flash: START");
   changedvalues = false;
   preferences.putUInt("langLEDlayout", langLEDlayout);
   preferences.putUInt("redVal_time", redVal_time);
@@ -408,7 +420,7 @@ void setFlashValues() {
   preferences.putUInt("useStartupText", useStartupText);
   preferences.putUInt("usesinglemin", usesinglemin);
   preferences.putUInt("RandomColor", RandomColor);
-  if (debugtexts == 1) Serial.println("Write settings to flash: END");
+  // if (debugtexts == 1) Serial.println("Write settings to flash: END");
   if (usenightmode == 1) {
     if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
       ESPUI.print(statusNightModeID, "Day time");
@@ -474,19 +486,25 @@ void call_langauge_select(Control* sender, int type) {
   updatedevice = false;
   delay(1000);
   langLEDlayout = sender->value.toInt();
-  // Set layout language text in gui:
-  if (langLEDlayout == 0) selectLang = "German";
-  if (langLEDlayout == 1) selectLang = "English";
-  if (langLEDlayout == 2) selectLang = "Dutch";
-  if (langLEDlayout == 3) selectLang = "Swedish";
-  if (langLEDlayout == 4) selectLang = "Italian";
-  if (langLEDlayout == 5) selectLang = "French";
-  if (langLEDlayout == 6) selectLang = "Swiss German";
-  if (langLEDlayout == 7) selectLang = "Chinese";
-  if (langLEDlayout == 8) selectLang = "Swabian German";
-  if (langLEDlayout == 9) selectLang = "Bavarian";
-  if (langLEDlayout == 10) selectLang = "Luxemburgish";
-  ESPUI.print(statusLanguageID, selectLang);
+  // Set layout language in drop down field:
+  if (langLEDlayout == 0) selectLangTXT = "German";
+  if (langLEDlayout == 1) selectLangTXT = "English";
+  if (langLEDlayout == 2) selectLangTXT = "Dutch";
+  if (langLEDlayout == 3) selectLangTXT = "Swedish";
+  if (langLEDlayout == 4) selectLangTXT = "Italian";
+  if (langLEDlayout == 5) selectLangTXT = "French";
+  if (langLEDlayout == 6) selectLangTXT = "Swiss German";
+  if (langLEDlayout == 7) selectLangTXT = "Chinese";
+  if (langLEDlayout == 8) selectLangTXT = "Swabian German";
+  if (langLEDlayout == 9) selectLangTXT = "Bavarian";
+  if (langLEDlayout == 10) selectLangTXT = "Luxemburgish";
+  if (debugtexts == 1) {
+    Serial.print("Selected language ID: ");
+    Serial.println(langLEDlayout);
+    Serial.print("Selected language: ");
+    Serial.println(selectLangTXT);
+  }
+  ESPUI.print(statusLanguageID, selectLangTXT);
   changedvalues = true;
   updatedevice = true;
 }
@@ -3316,18 +3334,80 @@ void setTimezone(String timezone) {
   Serial.printf("Setting timezone to %s\n", timezone.c_str());
   setenv("TZ", timezone.c_str(), 1);  //  Now adjust the TZ.  Clock settings are adjusted to show the new local time
   tzset();
+  delay(1000);
 }
 // ###########################################################################################################################################
-int TimeResetCounter = 1;
 void initTime(String timezone) {
-  struct tm timeinfo;
   Serial.println("Setting up time");
-  configTime(0, 0, NTPserver);
-  delay(500);
-  while (!getLocalTime(&timeinfo)) {
+
+  for (int i = 0; i < 3; i++) {
     ClearDisplay();
     strip.show();
     delay(500);
+
+    if (langLEDlayout == 0) {  // DE:
+      setLEDcol(1, 4, strip.Color(0, 0, 255));
+    }
+
+    if (langLEDlayout == 1) {  // EN:
+      setLEDcol(33, 36, strip.Color(0, 0, 255));
+    }
+
+    if (langLEDlayout == 2) {  // NL:
+      setLEDcol(69, 72, strip.Color(0, 0, 255));
+    }
+
+    if (langLEDlayout == 3) {  // SWE:
+      setLEDcol(96, 98, strip.Color(0, 0, 255));
+    }
+
+    if (langLEDlayout == 4) {                       // IT:
+      setLEDcol(111, 111, strip.Color(0, 0, 255));  // T
+      setLEDcol(96, 97, strip.Color(0, 0, 255));    // EM
+      setLEDcol(131, 131, strip.Color(0, 0, 255));  // P
+      setLEDcol(234, 234, strip.Color(0, 0, 255));  // O
+    }
+
+    if (langLEDlayout == 5) {                       // FR:
+      setLEDcol(10, 10, strip.Color(0, 0, 255));    // T
+      setLEDcol(41, 42, strip.Color(0, 0, 255));    // EM
+      setLEDcol(105, 105, strip.Color(0, 0, 255));  // p
+      setLEDcol(128, 128, strip.Color(0, 0, 255));  // S
+    }
+
+    if (langLEDlayout == 6) {                   // GSW:
+      setLEDcol(0, 3, strip.Color(0, 0, 255));  // ZIIT
+    }
+
+    if (langLEDlayout == 7) {  // CN:
+      setLEDcol(40, 41, strip.Color(0, 0, 255));
+    }
+
+    if (langLEDlayout == 8) {                       // SWABIAN:
+      setLEDcol(73, 74, strip.Color(0, 0, 255));    // ZE
+      setLEDcol(131, 131, strip.Color(0, 0, 255));  // I
+      setLEDcol(204, 204, strip.Color(0, 0, 255));  // T
+    }
+
+    if (langLEDlayout == 9) {                   // BAVARIAN:
+      setLEDcol(5, 8, strip.Color(0, 0, 255));  // ZEID
+    }
+
+    if (langLEDlayout == 10) {                    // LTZ:
+      setLEDcol(1, 4, strip.Color(0, 0, 255));    // ZÄIT
+      setLEDcol(27, 30, strip.Color(0, 0, 255));  // 2nd row
+    }
+    strip.show();
+    delay(500);
+  }
+
+
+  struct tm timeinfo;
+  configTime(0, 0, NTPserver);
+  delay(500);
+
+  while (!getLocalTime(&timeinfo)) {
+    delay(1000);
 
     if (langLEDlayout == 0) {  // DE:
       setLEDcol(1, 4, strip.Color(255, 0, 0));
@@ -3383,16 +3463,12 @@ void initTime(String timezone) {
     }
 
     strip.show();
-    delay(500);
+    delay(250);
     ClearDisplay();
-    delay(500);
+    delay(250);
 
-    Serial.println("! Failed to obtain time - Time server could not be reached ! --> Try: " + String(TimeResetCounter) + " of 3...");
-    TimeResetCounter = TimeResetCounter + 1;
-    if (TimeResetCounter == 4) {
-      Serial.println("! Failed to obtain time - Time server could not be reached ! --> RESTART THE DEVICE NOW...");
-      ESP.restart();
-    }
+    Serial.println("! Failed to obtain time - Time server could not be reached ! --> RESTART THE DEVICE NOW...");
+    ESP.restart();
   }
 
   // Time successfully received:
@@ -3837,7 +3913,7 @@ void showtext(String letter, int wait, uint32_t c) {
 // # Startup WiFi text function:
 // ###########################################################################################################################################
 void SetWLAN(uint32_t color) {
-  if (debugtexts == 1) Serial.println("Show text WLAN/WIFI...");
+  // if (debugtexts == 1) Serial.println("Show text WLAN/WIFI...");
   ClearDisplay();
 
   if (langLEDlayout == 0) {  // DE:
@@ -4147,7 +4223,10 @@ void CaptivePotalSetup() {
   server.on("msftconnecttest.com", [](AsyncWebServerRequest* request) {
     request->redirect(captiveportalURL);
   });
-  server.on("/fwlink", [](AsyncWebServerRequest* request) {
+  server.on("microsoft.com", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+  });
+   server.on("/fwlink", [](AsyncWebServerRequest* request) {
     request->redirect(captiveportalURL);
   });
   server.on("/wpad.dat", [](AsyncWebServerRequest* request) {
@@ -4196,7 +4275,7 @@ void CaptivePotalSetup() {
 
   server.onNotFound([](AsyncWebServerRequest* request) {
     request->redirect(captiveportalURL);
-    Serial.print("onnotfound ");
+    Serial.print("URL not found: ");
     Serial.print(request->host());
     Serial.print(" ");
     Serial.print(request->url());
@@ -4283,7 +4362,6 @@ void WIFI_SETUP() {
       Serial.println("DNS: " + WiFi.dnsIP().toString());
       SetWLAN(strip.Color(0, 255, 0));
       delay(1000);
-
       if (useStartupText == 1) callStartText();  // Show "WordClock" startup text
       if (useshowip == 1) ShowIPaddress();       // Display the current IP-address
       configNTPTime();                           // NTP time setup
