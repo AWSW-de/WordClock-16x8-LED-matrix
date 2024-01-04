@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.6.5";
+const char* WORD_CLOCK_VERSION = "V2.7.0";
 
 
 // ###########################################################################################################################################
@@ -333,7 +333,7 @@ void setupWebInterface() {
   ESPUI.button("Reset WiFi settings", &buttonWiFiReset, ControlColor::Dark, "Reset WiFi settings", (void*)2);
 
   // Reset WordClock settings:
-  ESPUI.button("Reset WordClock settings", &buttonWordClockReset, ControlColor::Dark, "Reset WordClock settings", (void*)3);
+  ESPUI.button("Reset WordClock settings (except WiFi)", &buttonWordClockReset, ControlColor::Dark, "Reset WordClock settings (except WiFi)", (void*)3);
 
 
 
@@ -426,58 +426,44 @@ void setFlashValues() {
 // ###########################################################################################################################################
 // # GUI: Reset the WordClock settings:
 // ###########################################################################################################################################
-int WordClockResetCounter = 0;
 void buttonWordClockReset(Control* sender, int type, void* param) {
   updatedevice = false;
   delay(100);
-  if (WordClockResetCounter == 0) ResetTextLEDs(strip.Color(255, 0, 0));
-  if (WordClockResetCounter == 1) ResetTextLEDs(strip.Color(0, 255, 0));
-  switch (type) {
-    case B_DOWN:
-      break;
-    case B_UP:
-      if (WordClockResetCounter == 1) {
-        Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST EXECUTED");
-        // Save stored values for WiFi:
-        String tempDelWiFiSSID = preferences.getString("WIFIssid");
-        String tempDelWiFiPASS = preferences.getString("WIFIpass");
-        preferences.clear();
-        delay(100);
-        preferences.putString("WIFIssid", tempDelWiFiSSID);  // Restore entered WiFi SSID
-        preferences.putString("WIFIpass", tempDelWiFiPASS);  // Restore entered WiFi password
-        preferences.putUInt("langLEDlayout", langLEDlayout_default);
-        preferences.putUInt("redVal_time", redVal_time_default);
-        preferences.putUInt("greenVal_time", greenVal_time_default);
-        preferences.putUInt("blueVal_time", blueVal_time_default);
-        preferences.putUInt("redVal_back", redVal_back_default);
-        preferences.putUInt("greenVal_back", greenVal_back_default);
-        preferences.putUInt("blueVal_back", blueVal_back_default);
-        preferences.putUInt("intensity_day", intensity_day_default);
-        preferences.putUInt("intensity_night", intensity_night_default);
-        preferences.putUInt("useshowip", useshowip_default);
-        preferences.putUInt("useStartupText", useStartupText_default);
-        preferences.putUInt("usenightmode", usenightmode_default);
-        preferences.putUInt("day_time_stop", day_time_stop_default);
-        preferences.putUInt("day_time_stop", day_time_stop_default);
-        preferences.putUInt("usesinglemin", usesinglemin_default);
-        preferences.putUInt("RandomColor", RandomColor_default);
-        delay(100);
-        preferences.end();
-        Serial.println("####################################################################################################");
-        Serial.println("# WORDCLOCK SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE AGAIN... #");
-        Serial.println("####################################################################################################");
-        ClearDisplay();
-        strip.show();
-        delay(250);
-        ESP.restart();
-      } else {
-        Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST");
-        ESPUI.print(statusLabelID, "WORDCLOCK SETTINGS RESET REQUESTED");
-        ESPUI.updateButton(sender->id, "! Press button once more to apply settings reset !");
-        WordClockResetCounter = WordClockResetCounter + 1;
-      }
-      break;
-  }
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  delay(1000);
+  Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST EXECUTED");
+  // Save stored values for WiFi:
+  String tempDelWiFiSSID = preferences.getString("WIFIssid");
+  String tempDelWiFiPASS = preferences.getString("WIFIpass");
+  preferences.clear();
+  delay(100);
+  preferences.putString("WIFIssid", tempDelWiFiSSID);  // Restore entered WiFi SSID
+  preferences.putString("WIFIpass", tempDelWiFiPASS);  // Restore entered WiFi password
+  preferences.putUInt("langLEDlayout", langLEDlayout_default);
+  preferences.putUInt("redVal_time", redVal_time_default);
+  preferences.putUInt("greenVal_time", greenVal_time_default);
+  preferences.putUInt("blueVal_time", blueVal_time_default);
+  preferences.putUInt("redVal_back", redVal_back_default);
+  preferences.putUInt("greenVal_back", greenVal_back_default);
+  preferences.putUInt("blueVal_back", blueVal_back_default);
+  preferences.putUInt("intensity_day", intensity_day_default);
+  preferences.putUInt("intensity_night", intensity_night_default);
+  preferences.putUInt("useshowip", useshowip_default);
+  preferences.putUInt("useStartupText", useStartupText_default);
+  preferences.putUInt("usenightmode", usenightmode_default);
+  preferences.putUInt("day_time_stop", day_time_stop_default);
+  preferences.putUInt("day_time_stop", day_time_stop_default);
+  preferences.putUInt("usesinglemin", usesinglemin_default);
+  preferences.putUInt("RandomColor", RandomColor_default);
+  delay(100);
+  preferences.end();
+  Serial.println("####################################################################################################");
+  Serial.println("# WORDCLOCK SETTING WERE SET TO DEFAULT... WORDCLOCK WILL NOW RESTART... PLEASE CONFIGURE AGAIN... #");
+  Serial.println("####################################################################################################");
+  ClearDisplay();
+  strip.show();
+  delay(250);
+  ESP.restart();
 }
 
 
@@ -1089,10 +1075,10 @@ void setLEDcol(int ledNrFrom, int ledNrTo, uint32_t color) {
 // # Get the sibling led for a two-led lit character (with 32 leds / 16 chars per row):
 // ###########################################################################################################################################
 int getPairedLED(int ledNumber) {
-    const int ledsPerLine = ROWPIXELS * 2;
-    int row = ledNumber / ledsPerLine; 
-    int positionInRow = ledNumber % ledsPerLine;
-    return row * ledsPerLine + (ledsPerLine - 1 - positionInRow);
+  const int ledsPerLine = ROWPIXELS * 2;
+  int row = ledNumber / ledsPerLine;
+  int positionInRow = ledNumber % ledsPerLine;
+  return row * ledsPerLine + (ledsPerLine - 1 - positionInRow);
 }
 
 
@@ -1455,13 +1441,13 @@ void show_time(int hours, int minutes) {
         }
       case 10:
         {
-          setLEDcol(99, 102, colorRGB);   // ZEHN (Stunden)
+          setLEDcol(99, 102, colorRGB);  // ZEHN (Stunden)
           if (testPrintTimeTexts == 1) Serial.print("ZEHN ");
           break;
         }
       case 11:
         {
-          setLEDcol(96, 98, colorRGB);    // ELF
+          setLEDcol(96, 98, colorRGB);  // ELF
           if (testPrintTimeTexts == 1) Serial.print("ELF ");
           break;
         }
@@ -1547,7 +1533,7 @@ void show_time(int hours, int minutes) {
         }
       case 3:
         {
-          setLEDcol(99, 103, colorRGB);   // THREE
+          setLEDcol(99, 103, colorRGB);  // THREE
           break;
         }
       case 4:
@@ -1582,7 +1568,7 @@ void show_time(int hours, int minutes) {
         }
       case 10:
         {
-          setLEDcol(96, 98, colorRGB);    // TEN
+          setLEDcol(96, 98, colorRGB);  // TEN
           break;
         }
       case 11:
@@ -1655,7 +1641,7 @@ void show_time(int hours, int minutes) {
     switch (xHour) {
       case 1:
         {
-          setLEDcol(99, 101, colorRGB);   // EEN
+          setLEDcol(99, 101, colorRGB);  // EEN
           break;
         }
       case 2:
@@ -1680,7 +1666,7 @@ void show_time(int hours, int minutes) {
         }
       case 6:
         {
-          setLEDcol(96, 98, colorRGB);    // ZES
+          setLEDcol(96, 98, colorRGB);  // ZES
           break;
         }
       case 7:
@@ -1916,7 +1902,7 @@ void show_time(int hours, int minutes) {
         }
       case 9:
         {
-          setLEDcol(97, 100, colorRGB);   // NOVE
+          setLEDcol(97, 100, colorRGB);  // NOVE
           if (testPrintTimeTexts == 1) Serial.print("NOVE ");
           break;
         }
@@ -1928,7 +1914,7 @@ void show_time(int hours, int minutes) {
         }
       case 11:
         {
-          setLEDcol(1, 6, colorRGB);    // UNDICI
+          setLEDcol(1, 6, colorRGB);  // UNDICI
           if (testPrintTimeTexts == 1) Serial.print("UNDICI ");
           break;
         }
@@ -2184,7 +2170,7 @@ void show_time(int hours, int minutes) {
         }
       case 3:
         {
-          setLEDcol(96, 99, colorRGB);    // DRÜÜ
+          setLEDcol(96, 99, colorRGB);  // DRÜÜ
           break;
         }
       case 4:
@@ -2489,7 +2475,7 @@ void show_time(int hours, int minutes) {
         }
       case 10:
         {
-          setLEDcol(96, 100, colorRGB);   // ZEHNE (Stunden)
+          setLEDcol(96, 100, colorRGB);  // ZEHNE (Stunden)
           if (testPrintTimeTexts == 1) Serial.print("ZEHNE ");
           break;
         }
@@ -2612,10 +2598,10 @@ void show_time(int hours, int minutes) {
       case 5:
         {
           if (iMinute < 5) {
-            setLEDcol(98, 101, colorRGB);   // FÜNF
+            setLEDcol(98, 101, colorRGB);  // FÜNF
             if (testPrintTimeTexts == 1) Serial.print("FÜNF ");
           } else {
-            setLEDcol(97, 101, colorRGB);   // FÜNFE
+            setLEDcol(97, 101, colorRGB);  // FÜNFE
             if (testPrintTimeTexts == 1) Serial.print("FÜNFE ");
           }
           break;
@@ -2826,7 +2812,7 @@ void show_time(int hours, int minutes) {
         }
       case 7:
         {
-          setLEDcol(99, 103, colorRGB);  // SIWEN
+          setLEDcol(99, 103, colorRGB);   // SIWEN
           setLEDcol(120, 124, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("SIWEN ");
           break;
@@ -2840,21 +2826,21 @@ void show_time(int hours, int minutes) {
         }
       case 9:
         {
-          setLEDcol(96, 99, colorRGB);  // NÉNG
+          setLEDcol(96, 99, colorRGB);    // NÉNG
           setLEDcol(124, 127, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("NÉNG ");
           break;
         }
       case 10:
         {
-          setLEDcol(133, 136, colorRGB);   // ZÉNG (Stonnen)
+          setLEDcol(133, 136, colorRGB);  // ZÉNG (Stonnen)
           setLEDcol(151, 154, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("ZÉNG ");
           break;
         }
       case 11:
         {
-          setLEDcol(128, 132, colorRGB);    // ELLEF
+          setLEDcol(128, 132, colorRGB);  // ELLEF
           setLEDcol(155, 159, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("ELLEF ");
           break;
@@ -3305,7 +3291,7 @@ void setLED(int ledNrFrom, int ledNrTo, int switchOn) {
         strip.setPixelColor(i, strip.Color(redVal_time, greenVal_time, blueVal_time));
         int pairedLED = getPairedLED(i);
         if ((pairedLED >= 0) && (pairedLED < NUMPIXELS))
-          strip.setPixelColor(pairedLED, strip.Color(redVal_time, greenVal_time, blueVal_time));  
+          strip.setPixelColor(pairedLED, strip.Color(redVal_time, greenVal_time, blueVal_time));
       }
     }
   }
@@ -3337,10 +3323,11 @@ void initTime(String timezone) {
   struct tm timeinfo;
   Serial.println("Setting up time");
   configTime(0, 0, NTPserver);
+  delay(500);
   while (!getLocalTime(&timeinfo)) {
     ClearDisplay();
     strip.show();
-    delay(250);
+    delay(500);
 
     if (langLEDlayout == 0) {  // DE:
       setLEDcol(1, 4, strip.Color(255, 0, 0));
@@ -3372,8 +3359,8 @@ void initTime(String timezone) {
       setLEDcol(128, 128, strip.Color(255, 0, 0));  // S
     }
 
-    if (langLEDlayout == 6) {                     // GSW:
-      setLEDcol(0, 3, strip.Color(255, 0, 0));    // ZIIT
+    if (langLEDlayout == 6) {                   // GSW:
+      setLEDcol(0, 3, strip.Color(255, 0, 0));  // ZIIT
     }
 
     if (langLEDlayout == 7) {  // CN:
@@ -3386,19 +3373,19 @@ void initTime(String timezone) {
       setLEDcol(204, 204, strip.Color(255, 0, 0));  // T
     }
 
-    if (langLEDlayout == 9) {                     // BAVARIAN:
-      setLEDcol(5, 8, strip.Color(255, 0, 0));    // ZEID
+    if (langLEDlayout == 9) {                   // BAVARIAN:
+      setLEDcol(5, 8, strip.Color(255, 0, 0));  // ZEID
     }
 
-    if (langLEDlayout == 10) {                     // LTZ:
+    if (langLEDlayout == 10) {                    // LTZ:
       setLEDcol(1, 4, strip.Color(255, 0, 0));    // ZÄIT
       setLEDcol(27, 30, strip.Color(255, 0, 0));  // 2nd row
     }
 
     strip.show();
-    delay(250);
+    delay(500);
     ClearDisplay();
-    delay(250);
+    delay(500);
 
     Serial.println("! Failed to obtain time - Time server could not be reached ! --> Try: " + String(TimeResetCounter) + " of 3...");
     TimeResetCounter = TimeResetCounter + 1;
@@ -3440,8 +3427,8 @@ void initTime(String timezone) {
     setLEDcol(128, 128, strip.Color(0, 255, 0));  // S
   }
 
-  if (langLEDlayout == 6) {                     // GSW:
-    setLEDcol(0, 3, strip.Color(0, 255, 0));    // ZIIT
+  if (langLEDlayout == 6) {                   // GSW:
+    setLEDcol(0, 3, strip.Color(0, 255, 0));  // ZIIT
   }
 
   if (langLEDlayout == 7) {  // CN:
@@ -3454,11 +3441,11 @@ void initTime(String timezone) {
     setLEDcol(204, 204, strip.Color(0, 255, 0));  // T
   }
 
-  if (langLEDlayout == 9) {                     // BAVARIAN:
-    setLEDcol(5, 8, strip.Color(0, 255, 0));    // ZEID
+  if (langLEDlayout == 9) {                   // BAVARIAN:
+    setLEDcol(5, 8, strip.Color(0, 255, 0));  // ZEID
   }
 
-  if (langLEDlayout == 10) {                     // LTZ:
+  if (langLEDlayout == 10) {                    // LTZ:
     setLEDcol(1, 4, strip.Color(255, 0, 0));    // ZÄIT
     setLEDcol(27, 30, strip.Color(255, 0, 0));  // 2nd row
   }
@@ -3854,19 +3841,19 @@ void SetWLAN(uint32_t color) {
   ClearDisplay();
 
   if (langLEDlayout == 0) {  // DE:
-    setLEDcol(5, 8, color);   // WIFI
+    setLEDcol(5, 8, color);  // WIFI
   }
 
-  if (langLEDlayout == 1) {  // EN:
-    setLEDcol(7, 10, color);   // WIFI
+  if (langLEDlayout == 1) {   // EN:
+    setLEDcol(7, 10, color);  // WIFI
   }
 
-  if (langLEDlayout == 2) {  // NL:
-    setLEDcol(75, 78, color);   // WIFI
+  if (langLEDlayout == 2) {    // NL:
+    setLEDcol(75, 78, color);  // WIFI
   }
 
   if (langLEDlayout == 3) {  // SWE:
-    setLEDcol(0, 3, color);   // WIFI
+    setLEDcol(0, 3, color);  // WIFI
   }
 
   if (langLEDlayout == 4) {      // IT:
@@ -3883,8 +3870,8 @@ void SetWLAN(uint32_t color) {
     setLEDcol(224, 224, color);  // I
   }
 
-  if (langLEDlayout == 6) {    // GSW:
-    setLEDcol(7, 10, color);   // WIFI
+  if (langLEDlayout == 6) {   // GSW:
+    setLEDcol(7, 10, color);  // WIFI
   }
 
   if (langLEDlayout == 7) {    // CN:
@@ -3900,8 +3887,8 @@ void SetWLAN(uint32_t color) {
     setLEDcol(10, 13, color);  // WIFI
   }
 
-  if (langLEDlayout == 10) {  // LTZ:
-    setLEDcol(5, 8, color);  // WIFI
+  if (langLEDlayout == 10) {   // LTZ:
+    setLEDcol(5, 8, color);    // WIFI
     setLEDcol(23, 26, color);  // 2nd row
   }
 
@@ -4284,7 +4271,7 @@ void WIFI_SETUP() {
           Serial.println("WiFi settings deleted because in " + String(maxWiFiconnctiontries) + " tries the WiFi connection could not be established. Temporary WordClock access point will be started to reconfigure WiFi again.");
           ESP.restart();
         }
-        delay(500);
+        delay(1000);
         SetWLAN(strip.Color(0, 0, 0));
         delay(500);
       }

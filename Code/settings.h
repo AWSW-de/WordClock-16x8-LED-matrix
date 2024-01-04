@@ -12,7 +12,7 @@
 // # Creative Commons Attribution-NonCommercial 3.0 Unported License http://creativecommons.org/licenses/by-nc/3.0
 // # Important: NonCommercial — You may not use the material for commercial purposes !
 // #
-// # Compatible with WordClock version: V2.6.5
+// # Compatible with WordClock version: V2.7.0
 // #
 // ###########################################################################################################################################
 /*
@@ -36,17 +36,17 @@
 int langLEDlayout_default = 0;
 // Available languages:
 // ####################
-// 0 = DE   - GERMAN
-// 1 = EN   - ENGLISH
-// 2 = NL   - DUTCH
-// 3 = SWE  - SWEDISH
-// 4 = IT   - ITALIAN
-// 5 = FR   - FRENCH
-// 6 = GSW  - SWISS GERMAN
-// 7 = CN   - CHINESE
-// 8 = SCHWB - SWABIAN GERMAN
-// 9 = BAY - BAVARIAN
-// 10 = LTZ - LUXEMBURGISH
+// 0 = DE     - GERMAN
+// 1 = EN     - ENGLISH
+// 2 = NL     - DUTCH
+// 3 = SWE    - SWEDISH
+// 4 = IT     - ITALIAN
+// 5 = FR     - FRENCH
+// 6 = GSW    - SWISS GERMAN
+// 7 = CN     - CHINESE
+// 8 = SCHWB  - SWABIAN GERMAN
+// 9 = BAY    - BAVARIAN
+// 10 = LTZ   - LUXEMBURGISH
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
@@ -55,14 +55,14 @@ int langLEDlayout_default = 0;
 // ###########################################################################################################################################
 #define LEDPIN 32      // Arduino-Pin connected to the NeoPixels
 #define NUMPIXELS 256  // How many NeoPixels are attached to the Arduino
-#define ROWPIXELS 16  // How many NeoPixels per row
+#define ROWPIXELS 16   // How many NeoPixels per row
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
 
 
 // ###########################################################################################################################################
 // # LED intensity setting: !!! PLEASE READ THIS CAREFULLY TO AVOID DAMAGE TO THE ESP32 AND THE OTHER COMPONENTS !!!
 // ###########################################################################################################################################
-#define LEDintensityLIMIT 50 // of 255 MAX !!! Do NOT change this if you don't know how much power drain this may cause to avoid damage !!!
+#define LEDintensityLIMIT 50  // of 255 MAX !!! Do NOT change this if you don't know how much power drain this may cause to avoid damage !!!
 // Limit the intensity level to be able to select in the configuration to avoid to much power drain and to avoid hardware failures over time.
 // In case you want to use the device over longer times with a higher intensity or even higher, you will need to consider a much more
 // powerful power supply, a better cable to connect the device and you have to power the matrix directly to 5V of the power supply.
@@ -113,7 +113,7 @@ const char* hostname = "WordClock";  // Hostname to be set in your router
 // ###########################################################################################################################################
 // You can check a list of timezone string variables here:  https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
 // Please send me a message with your time zone settings to add them to this list in future releases. Thanks in advance! =)
-const char* Timezone = "CET-1CEST,M3.5.0,M10.5.0/3";           // Germany + Central Europe
+const char* Timezone = "CET-1CEST,M3.5.0,M10.5.0/3";  // Germany + Central Europe
 // const char* Timezone = "GMT0BST,M3.5.0/01,M10.5.0/02";      // UK
 // const char* Timezone = "MET-2METDST,M3.5.0/01,M10.5.0/02";  // Most of Europe
 // const char* Timezone = "CET-1CEST,M3.5.0,M10.5.0/3";        // Central Europe
