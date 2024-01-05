@@ -1055,15 +1055,10 @@ void ResetTextLEDs(uint32_t color) {
 
   if (langLEDlayout == 10) {     // LTZ:
     setLEDcol(38, 38, color);    // R
-    setLEDcol(57, 57, color);    // 2nd row
     setLEDcol(73, 73, color);    // E
-    setLEDcol(86, 86, color);    // 2nd row
     setLEDcol(103, 103, color);  // S
-    setLEDcol(120, 120, color);  // 2nd row
     setLEDcol(139, 139, color);  // E
-    setLEDcol(148, 148, color);  // 2nd row
     setLEDcol(171, 171, color);  // T
-    setLEDcol(180, 180, color);  // 2nd row
   }
 
   strip.show();
@@ -2714,9 +2709,7 @@ void show_time(int hours, int minutes) {
 
     // ET ASS:
     setLEDcol(14, 15, colorRGB);
-    setLEDcol(16, 17, colorRGB);  // 2nd row
     setLEDcol(10, 12, colorRGB);
-    setLEDcol(19, 21, colorRGB);  // 2nd row
     if (testPrintTimeTexts == 1) {
       Serial.println("");
       Serial.print(hours);
@@ -2728,43 +2721,36 @@ void show_time(int hours, int minutes) {
     // FËNNEF: (Minuten)
     if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
       setLEDcol(42, 47, colorRGB);
-      setLEDcol(48, 53, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("FËNNEF ");
     }
     // VÉIREL:
     if ((minDiv == 3) || (minDiv == 9)) {
       setLEDcol(36, 41, colorRGB);
-      setLEDcol(54, 59, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("VÉIREL ");
     }
     // ZÉNG: (Minuten)
     if ((minDiv == 2) || (minDiv == 10)) {
       setLEDcol(32, 35, colorRGB);
-      setLEDcol(60, 63, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("ZÉNG ");
     }
     // ZWANZEG:
     if ((minDiv == 4) || (minDiv == 8)) {
       setLEDcol(72, 78, colorRGB);
-      setLEDcol(81, 87, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("ZWANZEG ");
     }
     // OP:
     if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 7)) {
       setLEDcol(65, 66, colorRGB);
-      setLEDcol(93, 94, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("OP ");
     }
     // VIR:
     if ((minDiv == 5) || (minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
       setLEDcol(68, 70, colorRGB);
-      setLEDcol(89, 91, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("VIR ");
     }
     // HALLWER:
     if ((minDiv == 5) || (minDiv == 6) || (minDiv == 7)) {
       setLEDcol(105, 111, colorRGB);
-      setLEDcol(112, 118, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("HALLWER ");
     }
 
@@ -2788,7 +2774,6 @@ void show_time(int hours, int minutes) {
         {
           if (xHour == 1) {
             setLEDcol(137, 139, colorRGB);  // ENG
-            setLEDcol(148, 150, colorRGB);  // 2nd row
             if (testPrintTimeTexts == 1) Serial.print("ENG ");
           }
           break;
@@ -2796,77 +2781,66 @@ void show_time(int hours, int minutes) {
       case 2:
         {
           setLEDcol(199, 202, colorRGB);  // ZWOU
-          setLEDcol(213, 216, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("ZWOU ");
           break;
         }
       case 3:
         {
           setLEDcol(140, 143, colorRGB);  // DRÄI
-          setLEDcol(144, 147, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("DRÄI ");
           break;
         }
       case 4:
         {
           setLEDcol(203, 207, colorRGB);  // VÉIER
-          setLEDcol(208, 212, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("VÉIER ");
           break;
         }
       case 5:
         {
           setLEDcol(160, 165, colorRGB);  // FËNNEF
-          setLEDcol(186, 191, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("FËNNEF ");
           break;
         }
       case 6:
         {
           setLEDcol(166, 170, colorRGB);  // SECHS
-          setLEDcol(181, 185, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("SECHS ");
           break;
         }
       case 7:
         {
           setLEDcol(99, 103, colorRGB);   // SIWEN
-          setLEDcol(120, 124, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("SIWEN ");
           break;
         }
       case 8:
         {
           setLEDcol(171, 175, colorRGB);  // AACHT
-          setLEDcol(176, 180, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("AACHT ");
           break;
         }
       case 9:
         {
           setLEDcol(96, 99, colorRGB);    // NÉNG
-          setLEDcol(124, 127, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("NÉNG ");
           break;
         }
       case 10:
         {
           setLEDcol(133, 136, colorRGB);  // ZÉNG (Stonnen)
-          setLEDcol(151, 154, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("ZÉNG ");
           break;
         }
       case 11:
         {
           setLEDcol(128, 132, colorRGB);  // ELLEF
-          setLEDcol(155, 159, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("ELLEF ");
           break;
         }
       case 12:
         {
           setLEDcol(192, 198, colorRGB);  // ZWIELEF
-          setLEDcol(217, 223, colorRGB);  // 2nd row
           if (testPrintTimeTexts == 1) Serial.print("ZWIELEF ");
           break;
         }
@@ -2874,7 +2848,6 @@ void show_time(int hours, int minutes) {
 
     if (iMinute < 5) {
       setLEDcol(236, 239, colorRGB);  // AUER
-      setLEDcol(240, 243, colorRGB);  // 2nd row
       if (testPrintTimeTexts == 1) Serial.print("AUER ");
     }
   }
@@ -3244,41 +3217,29 @@ void showMinutes(int minutes) {
       case 1:
         {
           setLEDcol(234, 234, colorRGB);  // +
-          setLEDcol(245, 245, colorRGB);  // 2nd row
           setLEDcol(232, 232, colorRGB);  // 1
-          setLEDcol(247, 247, colorRGB);  // 2nd row
           setLEDcol(227, 225, colorRGB);  // MIN
-          setLEDcol(252, 254, colorRGB);  // 2nd row
           break;
         }
       case 2:
         {
           setLEDcol(234, 234, colorRGB);  // +
-          setLEDcol(245, 245, colorRGB);  // 2nd row
           setLEDcol(231, 231, colorRGB);  // 2
-          setLEDcol(248, 248, colorRGB);  // 2nd row
           setLEDcol(227, 225, colorRGB);  // MIN
-          setLEDcol(252, 254, colorRGB);  // 2nd row
           break;
         }
       case 3:
         {
           setLEDcol(234, 234, colorRGB);  // +
-          setLEDcol(245, 245, colorRGB);  // 2nd row
           setLEDcol(230, 230, colorRGB);  // 3
-          setLEDcol(249, 249, colorRGB);  // 2nd row
           setLEDcol(227, 225, colorRGB);  // MIN
-          setLEDcol(252, 254, colorRGB);  // 2nd row
           break;
         }
       case 4:
         {
           setLEDcol(234, 234, colorRGB);  // +
-          setLEDcol(245, 245, colorRGB);  // 2nd row
           setLEDcol(229, 229, colorRGB);  // 4
-          setLEDcol(250, 250, colorRGB);  // 2nd row
           setLEDcol(227, 225, colorRGB);  // MIN
-          setLEDcol(252, 254, colorRGB);  // 2nd row
           break;
         }
     }
@@ -3395,7 +3356,6 @@ void initTime(String timezone) {
 
     if (langLEDlayout == 10) {                    // LTZ:
       setLEDcol(1, 4, strip.Color(0, 0, 255));    // ZÄIT
-      setLEDcol(27, 30, strip.Color(0, 0, 255));  // 2nd row
     }
     strip.show();
     delay(500);
@@ -3459,7 +3419,6 @@ void initTime(String timezone) {
 
     if (langLEDlayout == 10) {                    // LTZ:
       setLEDcol(1, 4, strip.Color(255, 0, 0));    // ZÄIT
-      setLEDcol(27, 30, strip.Color(255, 0, 0));  // 2nd row
     }
 
     strip.show();
@@ -3523,7 +3482,6 @@ void initTime(String timezone) {
 
   if (langLEDlayout == 10) {                    // LTZ:
     setLEDcol(1, 4, strip.Color(255, 0, 0));    // ZÄIT
-    setLEDcol(27, 30, strip.Color(255, 0, 0));  // 2nd row
   }
 
   strip.show();
@@ -3965,7 +3923,6 @@ void SetWLAN(uint32_t color) {
 
   if (langLEDlayout == 10) {   // LTZ:
     setLEDcol(5, 8, color);    // WIFI
-    setLEDcol(23, 26, color);  // 2nd row
   }
 
   strip.show();
