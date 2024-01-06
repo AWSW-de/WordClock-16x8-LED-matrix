@@ -1,6 +1,6 @@
 // ###########################################################################################################################################
 // #
-// # WordClock code for the 3 printables WordClock 16x16 matrix projects:
+// # WordClock code for the 3 printables.com WordClock 16x16 matrix projects:
 // # https://www.printables.com/de/model/350568-wordclock-16x16-led-matrix-2023-v1
 // # https://www.printables.com/de/model/361861-wordclock-16x16-led-matrix-2023-v2
 // # https://www.printables.com/de/model/450556-wordclock-16x16-led-matrix-2023-v3
@@ -40,6 +40,7 @@
 // # - ESPUI                  // by s00500:                       https://github.com/s00500/ESPUI/archive/refs/tags/2.2.3.zip
 // # - ArduinoJson            // by bblanchon:                    https://github.com/bblanchon/ArduinoJson
 // # - LITTLEFS               // by lorol:                        https://github.com/lorol/LITTLEFS
+// # - ESP32Time              // by fbiego:                       https://github.com/fbiego/ESP32Time
 // #
 // ###########################################################################################################################################
 #include <WiFi.h>               // Used to connect the ESP32 to your WiFi
@@ -53,13 +54,14 @@
 #include <ESPUI.h>              // Used for the internal web server
 #include "esp_log.h"            // Disable WiFi debug warnings
 #include <Preferences.h>        // Used to save the configuration to the ESP32 flash
+#include <ESP32Time.h>          // Used for the Offline Mode ESP32 time function
 #include "settings.h"           // Settings are stored in a seperate file to make to code better readable and to be able to switch to other settings faster
 
 
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V2.8.0";
+const char* WORD_CLOCK_VERSION = "V3.0.0";
 
 
 // ###########################################################################################################################################
@@ -76,35 +78,20 @@ DNSServer dnsServer;
 // ###########################################################################################################################################
 // # Declartions and variables used in the functions:
 // ###########################################################################################################################################
-Preferences preferences;
-int langLEDlayout, statusLanguageID;
-int iHour = 0;
-int iMinute = 0;
-int iSecond = 0;
-int iDay = 23;
-int iMonth = 11;
-int iYear = 2022;
+Preferences preferences;  // ESP32 flash storage
+ESP32Time rtc;            // Setup Offline ESP32 time function
 bool updatedevice = true;
 bool updatenow = false;
 bool updatemode = false;
 bool changedvalues = false;
-String iStartTime = " ";
-int redVal_back, greenVal_back, blueVal_back;
-int redVal_time, greenVal_time, blueVal_time;
-int intensity, intensity_day, intensity_night, intensity_web;
-int set_web_intensity = 0;
-int usenightmode, day_time_start, day_time_stop, statusNightMode;
-int useshowip, usesinglemin, useStartupText;
-int statusLabelID, statusNightModeID, intensity_web_HintID, DayNightSectionID, LEDsettingsSectionID;
-int sliderBrightnessDayID, switchNightModeID, sliderBrightnessNightID, call_day_time_startID, call_day_time_stopID;
-int RandomColor;
-uint16_t text_colour_background;
-uint16_t text_colour_time;
-int switchRandomColorID, switchSingleMinutesID;
 bool WiFIsetup = false;
-String selectLangTXT;
-uint16_t selectLang;
-
+int iHour, iMinute, iSecond, iDay, iMonth, iYear, intensity, intensity_day, intensity_night, set_web_intensity, intensity_web;
+int redVal_back, greenVal_back, blueVal_back, redVal_time, greenVal_time, blueVal_time, langLEDlayout, statusLanguageID, DayNightSectionID, LEDsettingsSectionID;
+int usenightmode, day_time_start, day_time_stop, statusNightMode, useshowip, usesinglemin, useStartupText, statusLabelID, statusNightModeID, intensity_web_HintID, RandomColor, switchRandomColorID, switchSingleMinutesID;
+int sliderBrightnessDayID, switchNightModeID, sliderBrightnessNightID, call_day_time_startID, call_day_time_stopID, mySetTimeZone, mySetTimeZoneID, mySetTimeServer, mySetTimeServerID;
+int UseOnlineMode, OfflineCurrentHourOffset, iHourOffset, statusTimeFromDevice, statusTimeSetOffline, OfflineModeHint1, OfflineModeHint2, OfflineModeHint3, showOMhints;
+uint16_t text_colour_background, text_colour_time, selectLang, timeId;
+String iStartTime, selectLangTXT, myTimeZone, myTimeServer, Timezone, NTPserver;
 
 
 // ###########################################################################################################################################
@@ -113,17 +100,30 @@ uint16_t selectLang;
 void setup() {
   Serial.begin(115200);
   delay(1000);
+  Serial.println(" ");
+  Serial.println(" ");
+  Serial.println(" ");
   Serial.println("######################################################################");
-  Serial.print("# WordClock startup of version: ");
-  Serial.println(WORD_CLOCK_VERSION);
+  Serial.println("# WordClock startup of version: " + String(WORD_CLOCK_VERSION));
   Serial.println("######################################################################");
-  preferences.begin("wordclock", false);  // Init ESP32 flash
-  getFlashValues();                       // Read settings from flash
-  strip.begin();                          // Init the LEDs
-  strip.show();                           // Init the LEDs --> Set them to OFF
-  intensity = intensity_day;              // Set the intenity to day mode for startup
-  strip.setBrightness(intensity);         // Set LED brightness
-  WIFI_SETUP();                           // WiFi login and startup of web services
+  preferences.begin("wordclock", false);         // Init ESP32 flash
+  getFlashValues();                              // Read settings from flash
+  strip.begin();                                 // Init the LEDs
+  strip.show();                                  // Init the LEDs --> Set them to OFF
+  intensity = intensity_day;                     // Set the intenity to day mode for startup
+  strip.setBrightness(intensity);                // Set LED brightness
+  if (UseOnlineMode == 1) WIFI_SETUP();          // ONLINE MODE WiFi login and startup of web services
+  if (UseOnlineMode == 0) {                      // OFFLINE MODE
+    iHour = 9;                                   // Default hour in Offline Mode
+    iMinute = 41;                                // Default minute in Offline Mode
+    OfflinePotalSetup();                         // Offline mode setup access point
+    rtc.setTime(0, iMinute, iHour, 1, 1, 2024);  // Set time: (ss, mm, hh, DD, MM, YYYY) --> 17th Jan 2021 09:41:00
+    updatenow = true;                            // Update the display 1x after startup
+    update_display();                            // Update LED display
+    Serial.println("######################################################################");
+    Serial.println("# WordClock startup in OFFLINE MODE finished...");
+    Serial.println("######################################################################");
+  }
 }
 
 
@@ -131,13 +131,26 @@ void setup() {
 // # Loop function which runs all the time after the startup was done:
 // ###########################################################################################################################################
 void loop() {
-  if ((WiFIsetup == true) || (testTime == 1)) {
-    printLocalTime();                               // Locally get the time (NTP server requests done 1x per hour)
-    if (updatedevice == true) {                     // Allow display updates (normal usage)
-      if (changedvalues == true) setFlashValues();  // Write settings to flash
-      update_display();                             // Update display (1x per minute regulary)
+  if (UseOnlineMode == 1) {  // Online Mode actions:
+    if ((WiFIsetup == true) || (testTime == 1)) {
+      printLocalTime();                               // Locally get the time (NTP server requests done 1x per hour)
+      if (updatedevice == true) {                     // Allow display updates (normal usage)
+        if (changedvalues == true) setFlashValues();  // Write settings to flash
+        update_display();                             // Update display (1x per minute regulary)
+      }
+      if (updatemode == true) otaserver.handleClient();  // ESP32 OTA update
     }
-    if (updatemode == true) otaserver.handleClient();  // ESP32 OTA update
+  } else {                                               // Offline Mode actions:
+    if (debugtexts == 1) Serial.println(rtc.getTime());  // Time string as e.g. 15:24:38
+    struct tm timeinfo = rtc.getTimeStruct();
+    iHour = timeinfo.tm_hour;
+    iMinute = timeinfo.tm_min;
+    iSecond = timeinfo.tm_sec;
+    if (updatedevice == true) {
+      if (changedvalues == true) setFlashValues();  // Write settings to flash
+      update_display();
+    }
+    delay(1000);
   }
   dnsServer.processNextRequest();  // Update the web server
 }
@@ -148,17 +161,82 @@ void loop() {
 // ###########################################################################################################################################
 void setupWebInterface() {
   dnsServer.start(DNS_PORT, "*", apIP);
+  if (UseOnlineMode == 0) ESPUI.captivePortal = true;  // Offline Mode Captive Portal
 
 
   // Section General:
   // ################
   ESPUI.separator("General:");
 
-  // Status label:
-  statusLabelID = ESPUI.label("Status:", ControlColor::Dark, "Operational");
+  // Welcome label:
+  ESPUI.label("WordClock configuration", ControlColor::None, "Welcome to the WordClock configuration. Here you can adjust your WordClock settings to your personal needs. Enjoy your WordClock =)");
 
   // WordClock version:
-  ESPUI.label("Version", ControlColor::None, WORD_CLOCK_VERSION);
+  ESPUI.label("WordClock software version", ControlColor::None, WORD_CLOCK_VERSION);
+
+
+
+  // Section Offline Mode:
+  // #####################
+  ESPUI.separator("Operation mode:");
+
+  // Status label:
+  if (UseOnlineMode == 0) {
+    statusLabelID = ESPUI.label("Operation mode", ControlColor::None, "WordClock is used in Offline Mode. Please check time value.");
+  } else {
+    statusLabelID = ESPUI.label("Operation mode", ControlColor::Dark, "WordClock is used in Online Mode. All functions are available.");
+  }
+
+  // Add the invisible "Time" control to update to the current time of your device (PC, smartphone, tablet, ...)
+  timeId = ESPUI.addControl(Time, "", "", None, 0, timeCallback);
+
+  // Use online or offline mode:
+  ESPUI.switcher("Use WordClock in Online Mode (change forces restart)", &switchOffline, ControlColor::Dark, UseOnlineMode);
+
+  if (UseOnlineMode == 0) {
+    // Time read from your device:
+    ESPUI.button("Get time from your device", &getTimeCallback, ControlColor::Dark, "Get time from your computer, phone, tablet");
+    statusTimeFromDevice = ESPUI.label("Time received from your device", ControlColor::Dark, "-");
+
+    // Hour offset:
+    OfflineCurrentHourOffset = ESPUI.addControl(ControlType::Select, "Current hour offset", String(iHourOffset), ControlColor::Dark, Control::noParent, SetOfflineHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 9 hours", "-9", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 8 hours", "-8", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 7 hours", "-7", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 6 hours", "-6", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 5 hours", "-5", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 4 hours", "-4", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 3 hours", "-3", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 2 hours", "-2", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "- 1 hours", "-1", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 0 hours", "0", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 1 hours", "1", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 2 hours", "2", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 3 hours", "3", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 4 hours", "4", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 5 hours", "5", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 6 hours", "6", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 7 hours", "7", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 8 hours", "8", ControlColor::Alizarin, OfflineCurrentHourOffset);
+    ESPUI.addControl(ControlType::Option, "+ 9 hours", "9", ControlColor::Alizarin, OfflineCurrentHourOffset);
+
+    // Time set on WordClock with the calculated offset:
+    statusTimeSetOffline = ESPUI.label("Time set on WordClock", ControlColor::Dark, "-");
+  }
+
+  // Operation Mode hints:
+  ESPUI.switcher("Show the Operation Mode hints", &switchOMhints, ControlColor::Dark, showOMhints);
+  OfflineModeHint1 = ESPUI.label("What is 'Online Mode' ?", ControlColor::Dark, "WordClock uses your set local WiFi to update the time and can use all of the smart functions in your local network. (Normal and recommended operation mode)");
+  ESPUI.setPanelStyle(OfflineModeHint1, "width: 95%;");
+  OfflineModeHint2 = ESPUI.label("What is 'Offline Mode' ?", ControlColor::Dark, "WordClock does not use your WiFi and it sets up an own, internal access point '" + String(Offline_SSID) + "' you can connect to to control all functions that do not require your network. All smart functions will be disabled and you need to set the time manually after each startup, but you can use the time piece in environments without a local WiFi.");
+  ESPUI.setPanelStyle(OfflineModeHint2, "width: 95%;");
+  OfflineModeHint3 = ESPUI.label("General usage hints", ControlColor::Dark, "You can switch between both modes without lost of data. In case your browser does not open the WordClock configuration page automatically in any mode after connecting to the access point, please navigate to this URL manually: http://" + IpAddress2String(WiFi.softAPIP()));
+  ESPUI.setPanelStyle(OfflineModeHint3, "width: 95%;");
+  if (showOMhints == 0) {
+    ESPUI.updateVisibility(OfflineModeHint1, false);
+    ESPUI.updateVisibility(OfflineModeHint2, false);
+    ESPUI.updateVisibility(OfflineModeHint3, false);
+  }
 
 
 
@@ -201,10 +279,10 @@ void setupWebInterface() {
   // Use night mode function:
   switchNightModeID = ESPUI.switcher("Use night mode to reduce brightness", &switchNightMode, ControlColor::Dark, usenightmode);
 
-  // Intensity DAY slider selector: !!! DEFAULT LIMITED TO 64 of 255 !!!
+  // Intensity DAY slider selector:
   sliderBrightnessDayID = ESPUI.slider("Brightness during the day", &sliderBrightnessDay, ControlColor::Dark, intensity_day, 0, LEDintensityLIMIT);
 
-  // Intensity NIGHT slider selector: !!! DEFAULT LIMITED TO 64 of 255 !!!
+  // Intensity NIGHT slider selector:
   sliderBrightnessNightID = ESPUI.slider("Brightness at night", &sliderBrightnessNight, ControlColor::Dark, intensity_night, 0, LEDintensityLIMIT);
 
   // Night mode status:
@@ -220,80 +298,136 @@ void setupWebInterface() {
 
   // Section Startup:
   // ################
-  ESPUI.separator("Startup:");
+  if (UseOnlineMode == 1) {
+    ESPUI.separator("Startup:");
 
-  // Startup WordClock text function:
-  ESPUI.switcher("Show the 'WordClock' text on startup", &switchStartupText, ControlColor::Dark, useStartupText);
+    // Startup WordClock text function:
+    ESPUI.switcher("Show the 'WordClock' text on startup", &switchStartupText, ControlColor::Dark, useStartupText);
 
-  // Show IP-address on startup:
-  ESPUI.switcher("Show IP-address on startup", &switchShowIP, ControlColor::Dark, useshowip);
-
-
-
-  // Section WiFi:
-  // #############
-  ESPUI.separator("WiFi:");
-
-  // WiFi SSID:
-  ESPUI.label("SSID", ControlColor::Dark, WiFi.SSID());
-
-  // WiFi signal strength:
-  ESPUI.label("Signal", ControlColor::Dark, String(WiFi.RSSI()) + "dBm");
-
-  // Hostname:
-  ESPUI.label("Hostname", ControlColor::Dark, hostname);
-
-  // WiFi ip-address:
-  ESPUI.label("IP-address", ControlColor::Dark, IpAddress2String(WiFi.localIP()));
-
-  // WiFi MAC-address:
-  ESPUI.label("MAC address", ControlColor::Dark, WiFi.macAddress());
-
-
-
-  // Section smart home control via web URLs:
-  // ########################################
-  ESPUI.separator("Smart home control via web URLs:");
-
-  // About note:
-  ESPUI.label("About note", ControlColor::Dark, "Control WordClock from your smart home environment via web URLs.");
-
-  // Functions note:
-  ESPUI.label("Functions", ControlColor::Dark, "You can turn the LEDs off or on via http commands to reduce energy consumption.");
-
-  // Usage note:
-  ESPUI.label("Usage hints and examples", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":2023");
+    // Show IP-address on startup:
+    ESPUI.switcher("Show IP-address on startup", &switchShowIP, ControlColor::Dark, useshowip);
+  }
 
 
 
   // Section Time settings:
   // ######################
-  ESPUI.separator("Time settings:");
+  if (UseOnlineMode == 1) {
+    ESPUI.separator("Time settings:");
 
-  // NTP server:
-  ESPUI.label("NTP server", ControlColor::Dark, NTPserver);
+    // WordClock startup time:
+    ESPUI.label("WordClock startup time", ControlColor::Dark, iStartTime);
 
-  // Time zone:
-  ESPUI.label("Time zone", ControlColor::Dark, Timezone);
+    // NTP time server: (All of these were successfully tested on 06.01.2024)
+    mySetTimeServer = ESPUI.addControl(ControlType::Select, "Choose your time server (change forces restart)", String(myTimeServer), ControlColor::Dark, Control::noParent, SetMyTimeServer);
+    ESPUI.addControl(ControlType::Option, "Best choice: Your local router (WiFi gateway address)", "Your local router", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "Special: Use value set in 'settings.h'", NTPserver_default, ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "Special: Your local 'Speedport IP' router", "speedport.ip", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "Special: Your local 'Fritz!Box' router", "fritz.box", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "Default: pool.ntp.org", "pool.ntp.org", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "AS: asia.pool.ntp.org", "asia.pool.ntp.org", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "AT: asynchronos.iiss.at", "asynchronos.iiss.at", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "BE: ntp1.oma.be", "ntp1.oma.be", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "BR: ntps1.pads.ufrj.br", "ntps1.pads.ufrj.br", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "CA: time.nrc.ca", "time.nrc.ca", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "CH: ntp.neel.ch", "ntp.neel.ch", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "CL: ntp.shoa.cl", "ntp.shoa.cl", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "CN: ntp.neu.edu.cn", "ntp.neu.edu.cn", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "CZ: ntp.nic.cz", "ntp.nic.cz", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "DE: time.fu-berlin.de", "time.fu-berlin.de", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "ES: hora.roa.es", "hora.roa.es", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "EU: europe.pool.ntp.org", "europe.pool.ntp.org", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "EUS: ntp.i2t.ehu.eus", "ntp.i2t.ehu.eus", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "HU: ntp.atomki.mta.hu", "ntp.atomki.mta.hu", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "IT: ntp1.inrim.it", "ntp1.inrim.it", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "JP: ntp.nict.jp", "ntp.nict.jp", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "MX: cronos.cenam.mx", "cronos.cenam.mx", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "NL: ntp.vsl.nl", "ntp.vsl.nl", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "PL: tempus1.gum.gov.pl", "tempus1.gum.gov.pl", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "RO: ntp1.usv.ro", "ntp1.usv.ro", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "SE: time1.stupi.se", "time1.stupi.se", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "UK: uk.pool.ntp.org", "uk.pool.ntp.org", ControlColor::Alizarin, mySetTimeServer);
+    ESPUI.addControl(ControlType::Option, "US: north-america.pool.ntp.org", "north-america.pool.ntp.org", ControlColor::Alizarin, mySetTimeServer);
+    mySetTimeServerID = ESPUI.label("Used NTP time server", ControlColor::Dark, NTPserver);
 
-  // Time:
-  ESPUI.label("Startup time", ControlColor::Dark, iStartTime);
+    // Time zone:
+    mySetTimeZone = ESPUI.addControl(ControlType::Select, "Choose your time zone (change forces restart)", String(myTimeZone), ControlColor::Dark, Control::noParent, SetMyTimeZone);
+    ESPUI.addControl(ControlType::Option, "Use value set in 'settings.h'", Timezone_default, ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "Asia: EET-2EEST,M3.5.5/0,M10.5.5/0", "EET-2EEST,M3.5.5/0,M10.5.5/0", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "Australia: ACST-9:30ACDT,M10.1.0,M4.1.0/3", "ACST-9:30ACDT,M10.1.0,M4.1.0/3", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "Central Europe: CET-1CEST,M3.5.0,M10.5.0/3 (Austria,Denmark,France,Germany,Italy,Netherlands,Poland,Switzerland)", "CET-1CEST,M3.5.0,M10.5.0/3", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "Most of Europe: MET-2METDST,M3.5.0/01,M10.5.0/02", "MET-2METDST,M3.5.0/01,M10.5.0/02", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "New Zealand: NZST-12NZDT,M9.5.0,M4.1.0/3 (Auckland)", "NZST-12NZDT,M9.5.0,M4.1.0/3", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "UK: GMT0BST,M3.5.0/01,M10.5.0/02 (London)", "GMT0BST,M3.5.0/01,M10.5.0/02", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "USA EST: EST5EDT,M3.2.0,M11.1.0", "EST5EDT,M3.2.0,M11.1.0", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "USA CST: CST6CDT,M3.2.0,M11.1.0", "CST6CDT,M3.2.0,M11.1.0", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "USA MST: MST7MDT,M4.1.0,M10.5.0", "MST7MDT,M4.1.0,M10.5.0", ControlColor::Alizarin, mySetTimeZone);
+    ESPUI.addControl(ControlType::Option, "Vietnam: ICT-7", "ICT-7", ControlColor::Alizarin, mySetTimeZone);
+    mySetTimeZoneID = ESPUI.label("Used time zone value", ControlColor::Dark, Timezone);
+  }
+
+
+
+  // Section WiFi:
+  // #############
+  if (UseOnlineMode == 1) {
+    ESPUI.separator("WiFi:");
+
+    // WiFi SSID:
+    ESPUI.label("SSID", ControlColor::Dark, WiFi.SSID());
+
+    // WiFi signal strength:
+    ESPUI.label("Signal", ControlColor::Dark, String(WiFi.RSSI()) + "dBm");
+
+    // Hostname:
+    ESPUI.label("Hostname in your router", ControlColor::Dark, WiFi.getHostname());
+
+    // WiFi MAC-address:
+    ESPUI.label("MAC address", ControlColor::Dark, WiFi.macAddress());
+
+    // WiFi ip-address:
+    ESPUI.label("IP-address", ControlColor::Dark, IpAddress2String(WiFi.localIP()));
+
+    // WiFi DNS address:
+    ESPUI.label("DNS address", ControlColor::Dark, IpAddress2String(WiFi.dnsIP()));
+
+    // WiFi Gateway address:
+    ESPUI.label("Gateway address", ControlColor::Dark, IpAddress2String(WiFi.gatewayIP()));
+  }
+
+
+
+  // Section smart home control via web URLs:
+  // ########################################
+  if (UseOnlineMode == 1) {
+    ESPUI.separator("Smart home control via web URLs:");
+
+    // About note:
+    ESPUI.label("About note", ControlColor::Dark, "Control WordClock from your smart home environment via web URLs.");
+
+    // Functions note:
+    ESPUI.label("Functions", ControlColor::Dark, "You can turn the LEDs off or on via http commands to reduce energy consumption.");
+
+    // Usage note:
+    ESPUI.label("Usage hints and examples", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":2023 or http://" + String(WiFi.getHostname()) + ":2023 ");
+  }
 
 
 
   // Section Update:
   // ###############
-  ESPUI.separator("Update:");
+  if (UseOnlineMode == 1) {
+    ESPUI.separator("Update:");
 
-  // Update WordClock:
-  ESPUI.button("Activate update mode", &buttonUpdate, ControlColor::Dark, "Activate update mode", (void*)1);
+    // Update WordClock:
+    ESPUI.button("Activate update mode", &buttonUpdate, ControlColor::Dark, "Activate update mode", (void*)1);
 
-  // Update URL
-  ESPUI.label("Update URL", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":8080");
+    // Update URL
+    ESPUI.label("Update URL", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":8080");
 
-  // AWSW software GitHub repository:
-  ESPUI.label("Download newer software updates here", ControlColor::Dark, "https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023");
-
+    // AWSW software GitHub repository:
+    ESPUI.label("Download newer software updates here", ControlColor::Dark, "https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023");
+  }
 
 
   // Section Language:
@@ -316,7 +450,7 @@ void setupWebInterface() {
   Serial.println(selectLangTXT);
 
   // Change language:
-  selectLang = ESPUI.addControl(ControlType::Select, "Change layout language", selectLangTXT, ControlColor::Dark, Control::noParent, call_langauge_select);
+  selectLang = ESPUI.addControl(ControlType::Select, "Change layout language", String(langLEDlayout), ControlColor::Dark, Control::noParent, call_langauge_select);
   ESPUI.addControl(ControlType::Option, "German", "0", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "English", "1", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "Dutch", "2", ControlColor::Alizarin, selectLang);
@@ -342,10 +476,12 @@ void setupWebInterface() {
   ESPUI.button("Restart", &buttonRestart, ControlColor::Dark, "Restart", (void*)1);
 
   // Reset WiFi settings:
-  ESPUI.button("Reset WiFi settings", &buttonWiFiReset, ControlColor::Dark, "Reset WiFi settings", (void*)2);
+  if (UseOnlineMode == 1) {
+    ESPUI.button("Reset WiFi settings", &buttonWiFiReset, ControlColor::Dark, "Reset WiFi settings", (void*)2);
+  }
 
   // Reset WordClock settings:
-  ESPUI.button("Reset WordClock settings (except WiFi)", &buttonWordClockReset, ControlColor::Dark, "Reset WordClock settings", (void*)3);
+  ESPUI.button("Reset settings (except WiFi, language & operation mode)", &buttonWordClockReset, ControlColor::Dark, "Reset WordClock settings", (void*)3);
 
 
 
@@ -358,18 +494,8 @@ void setupWebInterface() {
 
 
 
-  // Update night mode status text on startup:
-  if (usenightmode == 1) {
-    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
-      ESPUI.print(statusNightModeID, "Day time");
-      if ((iHour == 0) && (day_time_stop == 23)) ESPUI.print(statusNightModeID, "Night time");  // Special function if day_time_stop set to 23 and time is 24, so 0...
-    } else {
-      ESPUI.print(statusNightModeID, "Night time");
-    }
-  }
-
-  // Deploy the page:
-  ESPUI.begin("WordClock");
+  checkforNightMode();       // Check for night mode settings on startup
+  ESPUI.begin("WordClock");  // Deploy the page:
 }
 
 
@@ -379,6 +505,12 @@ void setupWebInterface() {
 void getFlashValues() {
   // if (debugtexts == 1) Serial.println("Read settings from flash: START");
   langLEDlayout = preferences.getUInt("langLEDlayout", langLEDlayout_default);
+  myTimeZone = preferences.getString("myTimeZone", Timezone_default);
+  Timezone = myTimeZone;
+  myTimeServer = preferences.getString("myTimeServer", NTPserver_default);
+  NTPserver = myTimeServer;
+  UseOnlineMode = preferences.getUInt("UseOnlineMode", 1);
+  showOMhints = preferences.getUInt("showOMhints", showOMhints_default);
   redVal_time = preferences.getUInt("redVal_time", redVal_time_default);
   greenVal_time = preferences.getUInt("greenVal_time", greenVal_time_default);
   blueVal_time = preferences.getUInt("blueVal_time", blueVal_time_default);
@@ -390,6 +522,7 @@ void getFlashValues() {
   usenightmode = preferences.getUInt("usenightmode", usenightmode_default);
   day_time_start = preferences.getUInt("day_time_start", day_time_start_default);
   day_time_stop = preferences.getUInt("day_time_stop", day_time_stop_default);
+  iHourOffset = preferences.getUInt("iHourOffset", iHourOffset_default);
   useshowip = preferences.getUInt("useshowip", useshowip_default);
   useStartupText = preferences.getUInt("useStartupText", useStartupText_default);
   usesinglemin = preferences.getUInt("usesinglemin", usesinglemin_default);
@@ -405,6 +538,10 @@ void setFlashValues() {
   // if (debugtexts == 1) Serial.println("Write settings to flash: START");
   changedvalues = false;
   preferences.putUInt("langLEDlayout", langLEDlayout);
+  preferences.putString("myTimeZone", myTimeZone);
+  preferences.putString("myTimeServer", myTimeServer);
+  preferences.putUInt("UseOnlineMode", UseOnlineMode);
+  preferences.putUInt("showOMhints", showOMhints);
   preferences.putUInt("redVal_time", redVal_time);
   preferences.putUInt("greenVal_time", greenVal_time);
   preferences.putUInt("blueVal_time", blueVal_time);
@@ -416,21 +553,13 @@ void setFlashValues() {
   preferences.putUInt("usenightmode", usenightmode);
   preferences.putUInt("day_time_start", day_time_start);
   preferences.putUInt("day_time_stop", day_time_stop);
+  preferences.putUInt("iHourOffset", iHourOffset);
   preferences.putUInt("useshowip", useshowip);
   preferences.putUInt("useStartupText", useStartupText);
   preferences.putUInt("usesinglemin", usesinglemin);
   preferences.putUInt("RandomColor", RandomColor);
   // if (debugtexts == 1) Serial.println("Write settings to flash: END");
-  if (usenightmode == 1) {
-    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
-      ESPUI.print(statusNightModeID, "Day time");
-      if ((iHour == 0) && (day_time_stop == 23)) ESPUI.print(statusNightModeID, "Night time");  // Special function if day_time_stop set to 23 and time is 24, so 0...
-    } else {
-      ESPUI.print(statusNightModeID, "Night time");
-    }
-  } else {
-    ESPUI.print(statusNightModeID, "Night mode not used");
-  }
+  checkforNightMode();
   updatenow = true;  // Update display now...
 }
 
@@ -444,14 +573,18 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
   ResetTextLEDs(strip.Color(0, 255, 0));
   delay(1000);
   Serial.println("Status: WORDCLOCK SETTINGS RESET REQUEST EXECUTED");
-  // Save stored values for WiFi:
+  // Save stored values for WiFi, language and Operation Mode:
   String tempDelWiFiSSID = preferences.getString("WIFIssid");
   String tempDelWiFiPASS = preferences.getString("WIFIpass");
+  int tempDelLANG = preferences.getUInt("langLEDlayout");
+  int tempOfflineMode = preferences.getUInt("UseOnlineMode");
   preferences.clear();
   delay(100);
-  preferences.putString("WIFIssid", tempDelWiFiSSID);  // Restore entered WiFi SSID
-  preferences.putString("WIFIpass", tempDelWiFiPASS);  // Restore entered WiFi password
-  preferences.putUInt("langLEDlayout", langLEDlayout_default);
+  preferences.putUInt("UseOnlineMode", tempOfflineMode);  // Restore Operation Mode
+  preferences.putString("WIFIssid", tempDelWiFiSSID);     // Restore entered WiFi SSID
+  preferences.putString("WIFIpass", tempDelWiFiPASS);     // Restore entered WiFi password
+  preferences.putUInt("langLEDlayout", tempDelLANG);      // Restore entered language
+  preferences.putUInt("showOMhints", showOMhints_default);
   preferences.putUInt("redVal_time", redVal_time_default);
   preferences.putUInt("greenVal_time", greenVal_time_default);
   preferences.putUInt("blueVal_time", blueVal_time_default);
@@ -467,6 +600,8 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
   preferences.putUInt("day_time_stop", day_time_stop_default);
   preferences.putUInt("usesinglemin", usesinglemin_default);
   preferences.putUInt("RandomColor", RandomColor_default);
+  preferences.putString("myTimeZone", Timezone_default);
+  preferences.putString("myTimeServer", NTPserver_default);
   delay(100);
   preferences.end();
   Serial.println("####################################################################################################");
@@ -1209,8 +1344,6 @@ void switchStartupText(Control* sender, int value) {
 // # Update the display / time on it:
 // ###########################################################################################################################################
 void update_display() {
-  // if (debugtexts == 1) Serial.println("Time: " + iStartTime);
-
   // Show the current time or use the time text test function:
   if (testTime == 0) {  // Show the current time:
     show_time(iHour, iMinute);
@@ -1271,7 +1404,7 @@ void show_time(int hours, int minutes) {
   lastMinutesSet = minutes;
 
   // Show current time of display update:
-  // if (debugtexts == 1) Serial.println("Update display now: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
+  if (debugtexts == 1) Serial.println("Update display now: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
 
   // Night/Day mode intensity setting:
   if ((usenightmode == 1) && (set_web_intensity == 0)) {
@@ -1316,10 +1449,11 @@ void show_time(int hours, int minutes) {
   iMinute = minutes;
 
   // Test a special time:
-  if (testspecialtime == 1) {
-    Serial.println("Special time test active: " + String(test_hour) + ":" + String(test_minute));
-    iHour = test_hour;
-    iMinute = test_minute;
+  if (testspecialtimeON == 1) {
+    Serial.println("Special time test active in Online Mode: " + String(test_hourON) + ":" + String(test_minuteON) + ":" + String(test_secondON));
+    iHour = test_hourON;
+    iMinute = test_minuteON;
+    iSecond = test_secondON;
   }
 
   // divide minute by 5 to get value for display control
@@ -3299,7 +3433,7 @@ void setTimezone(String timezone) {
 }
 // ###########################################################################################################################################
 void initTime(String timezone) {
-  Serial.println("Setting up time");
+  Serial.println("Setting up time from: " + NTPserver);
 
   for (int i = 0; i < 3; i++) {
     ClearDisplay();
@@ -3363,7 +3497,7 @@ void initTime(String timezone) {
 
 
   struct tm timeinfo;
-  configTime(0, 0, NTPserver);
+  configTime(0, 0, NTPserver.c_str());
   delay(500);
 
   while (!getLocalTime(&timeinfo)) {
@@ -3425,8 +3559,9 @@ void initTime(String timezone) {
     delay(250);
     ClearDisplay();
     delay(250);
-
+    ResetTextLEDs(strip.Color(0, 255, 0));
     Serial.println("! Failed to obtain time - Time server could not be reached ! --> RESTART THE DEVICE NOW...");
+    delay(250);
     ESP.restart();
   }
 
@@ -3486,7 +3621,7 @@ void initTime(String timezone) {
 
   strip.show();
   delay(1000);
-  Serial.println("Got the time from NTP");
+  Serial.println("Got the time from NTP server: " + NTPserver);
   setTimezone(timezone);
 }
 // ###########################################################################################################################################
@@ -3586,16 +3721,36 @@ int hexcolorToInt(char upper, char lower) {
 // ###########################################################################################################################################
 // # GUI: Color change for time color:
 // ###########################################################################################################################################
+#define SLIDER_UPDATE_TIME 150  // Wait at least 100 ms before allowing another slider update --> Bug fix for color slider crashing ESP32
 void colCallTIME(Control* sender, int type) {
-  getRGBTIME(sender->value);
+  static unsigned long last_slider_update = 0;  // Track the time of the last slider update
+  if ((millis() - last_slider_update >= SLIDER_UPDATE_TIME)) {
+    getRGBTIME(sender->value);
+    last_slider_update = millis();
+    if (debugtexts == 1) {
+      Serial.println(type);
+      Serial.println(sender->value);
+    }
+  }
+  return;
 }
 
 
 // ###########################################################################################################################################
 // # GUI: Color change for background color:
 // ###########################################################################################################################################
+#define SLIDER_UPDATE_BACK 150  // Wait at least 100 ms before allowing another slider update --> Bug fix for color slider crashing ESP32
 void colCallBACK(Control* sender, int type) {
-  getRGBBACK(sender->value);
+  static unsigned long last_slider_update = 0;  // Track the time of the last slider update
+  if ((type == 10) && (millis() - last_slider_update >= SLIDER_UPDATE_BACK)) {
+    getRGBBACK(sender->value);
+    last_slider_update = millis();
+    if (debugtexts == 1) {
+      Serial.println(type);
+      Serial.println(sender->value);
+    }
+  }
+  return;
 }
 
 
@@ -4106,8 +4261,8 @@ const char saved_html[] PROGMEM = R"rawliteral(
   </style>
   <body>
     <center><h2><b>Settings saved...<br><br>
-    WordClock will now try to connect to the named WiFi with the set language.<br>
-    If it failes the WIFI leds will flash red and then please try to connect to the temporary access point again.<br>
+    WordClock will now try to connect to the named WiFi with the set language.<br><br>
+    If it failes the WIFI leds will flash red and then please try to connect to the temporary access point again.<br><br>
     Please close this page now and enjoy your WordClock. =)</h2></b>
  </body></html>)rawliteral";
 
@@ -4183,7 +4338,7 @@ void CaptivePotalSetup() {
   server.on("microsoft.com", [](AsyncWebServerRequest* request) {
     request->redirect(captiveportalURL);
   });
-   server.on("/fwlink", [](AsyncWebServerRequest* request) {
+  server.on("/fwlink", [](AsyncWebServerRequest* request) {
     request->redirect(captiveportalURL);
   });
   server.on("/wpad.dat", [](AsyncWebServerRequest* request) {
@@ -4288,8 +4443,9 @@ void WIFI_SETUP() {
       WiFi.disconnect();
       int tryCount = 0;
       WiFi.mode(WIFI_STA);
+      // WiFi.setHostname(hostname); // Potential ESP32 bug... Does not work anymore :(
       WiFi.begin((const char*)WIFIssid.c_str(), (const char*)WIFIpass.c_str());
-      Serial.println("Connecting to WiFi " + String(WIFIssid));
+      Serial.println("Connecting to WiFi: " + String(WIFIssid));
       while (WiFi.status() != WL_CONNECTED) {
         SetWLAN(strip.Color(0, 0, 255));
         tryCount = tryCount + 1;
@@ -4317,23 +4473,29 @@ void WIFI_SETUP() {
       Serial.println(WiFi.SSID());
       Serial.println("IP: " + WiFi.localIP().toString());
       Serial.println("DNS: " + WiFi.dnsIP().toString());
+      Serial.println("GW: " + WiFi.gatewayIP().toString());
+      Serial.println("ESP32 hostname: " + String(WiFi.getHostname()));
       SetWLAN(strip.Color(0, 255, 0));
       delay(1000);
-      if (useStartupText == 1) callStartText();  // Show "WordClock" startup text
-      if (useshowip == 1) ShowIPaddress();       // Display the current IP-address
-      configNTPTime();                           // NTP time setup
-      setupWebInterface();                       // Generate the configuration page
-      updatenow = true;                          // Update the display 1x after startup
-      update_display();                          // Update LED display
-      handleLEDupdate();                         // LED update via web
-      setupOTAupate();                           // ESP32 OTA update
+      configNTPTime();      // NTP time setup
+      setupWebInterface();  // Generate the configuration page
+      handleLEDupdate();    // LED update via web
+      setupOTAupate();      // ESP32 OTA update
       Serial.println("######################################################################");
       Serial.println("# Web interface online at: http://" + IpAddress2String(WiFi.localIP()));
+      Serial.println("# Web interface online at: http://" + String(WiFi.getHostname()));
       Serial.println("# HTTP controls online at: http://" + IpAddress2String(WiFi.localIP()) + ":2023");
+      Serial.println("# HTTP controls online at: http://" + String(WiFi.getHostname()) + ":2023");
       Serial.println("######################################################################");
       Serial.println("# WordClock startup finished...");
       Serial.println("######################################################################");
+      if (useStartupText == 1) callStartText();  // Show "WordClock" startup text
+      if (useshowip == 1) ShowIPaddress();       // Display the current IP-address
       Serial.println(" ");
+      Serial.println(" ");
+      Serial.println(" ");
+      updatenow = true;  // Update the display 1x after startup
+      update_display();  // Update LED display
     }
   }
 }
@@ -4355,7 +4517,7 @@ const char otaserverIndex[] PROGMEM = R"=====(
   <body>
     <form method='POST' action='/update' enctype='multipart/form-data'>
       <center><b><h1>WordClock software update</h1></b>
-      <h2>Please select the in the Arduino IDE > "Sketch" ><br/>"Export Compiled Binary (Alt+Ctrl+S)"<br/>to generate the required .BIN file.<br/>
+      <h2>Please select the in the Arduino IDE > "Sketch" ><br/>"Export Compiled Binary (Alt+Ctrl+S)"<br/>to generate the required "Code.ino.bin" file.<br/>
       Use the "Update" button 1x to start the update.<br/><br/>WordClock will restart automatically.</h2><br/>
       <input type='file' name='update'>       <input type='submit' value='Update'>
      </center></form></body>
@@ -4488,6 +4650,400 @@ void setupOTAupate() {
       }
     });
   otaserver.begin();
+}
+
+
+// ###########################################################################################################################################
+// # OFFLINE MODE Captive Portal by AWSW
+// ###########################################################################################################################################
+void OfflinePotalSetup() {
+  if (debugtexts == 1) Serial.println("\nCreating WordClock Offline Mode access point...");
+  WiFi.mode(WIFI_AP);
+  delay(100);
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+  if (UseOfflineModeWithPassword == 1) {  // Access point with password or not
+    WiFi.softAP(Offline_SSID, Offline_PW);
+  } else {
+    WiFi.softAP(Offline_SSID);
+  }
+  Serial.println("##############################################################################################################################################################################################################");
+  Serial.print("# Offline Mode WiFi access point initialized. Please connect to the WiFi access point and set the current time now. Access point name: '");
+  Serial.print(Offline_SSID);
+  if (UseOfflineModeWithPassword == 1) {
+    Serial.print("' using the password: '");
+    Serial.print(Offline_PW);
+  }
+  Serial.println("'");
+  Serial.print("# In case your browser does not open the WordClock configuration page automatically after connecting to the access point, please navigate to this URL manually: http://");
+  Serial.println(WiFi.softAPIP());
+  Serial.println("##############################################################################################################################################################################################################");
+
+  setupWebInterface();  // Generate the configuration page
+
+  server.on("/connecttest.txt", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /connecttest.txt");
+  });
+  server.on("msftconnecttest.com", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served msftconnecttest.com");
+  });
+  server.on("/fwlink", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /fwlink");
+  });
+  server.on("/wpad.dat", [](AsyncWebServerRequest* request) {
+    // request->send(404);
+    request->redirect(captiveportalURL);
+    Serial.println("Served wpad.dat");
+  });
+  server.on("/generate_204", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /gernerate_204");
+  });
+  server.on("/redirect", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /redirect");
+  });
+  server.on("/hotspot-detect.html", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /hotspot-detect.html");
+  });
+  server.on("/canonical.html", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /cannonical.html");
+  });
+  server.on("/success.txt", [](AsyncWebServerRequest* request) {
+    // request->send(200);
+    request->redirect(captiveportalURL);
+    Serial.println("Served /success.txt");
+  });
+  server.on("/ncsi.txt", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /ncsi.txt");
+  });
+  server.on("/chrome-variations/seed", [](AsyncWebServerRequest* request) {
+    // request->send(200);
+    request->redirect(captiveportalURL);
+    Serial.println("Served /chrome-variations/seed");
+  });
+  server.on("/service/update2/json", [](AsyncWebServerRequest* request) {
+    // request->send(200);
+    request->redirect(captiveportalURL);
+    Serial.println("Served /service/update2/json");
+  });
+  server.on("/chat", [](AsyncWebServerRequest* request) {
+    // request->send(404);
+    request->redirect(captiveportalURL);
+    Serial.println("Served /chat");
+  });
+  server.on("/startpage", [](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.println("Served /startpage");
+  });
+  server.on("/favicon.ico", [](AsyncWebServerRequest* request) {
+    // request->send(404);
+    request->redirect(captiveportalURL);
+    Serial.println("Served /favicon.ico");
+  });
+
+
+  server.on("/", HTTP_ANY, [](AsyncWebServerRequest* request) {
+    AsyncWebServerResponse* response = request->beginResponse(200, "text/html", index_html);
+    // AsyncWebServerResponse* response = request->beginResponse(200, "text/html", index_offline_html);
+    response->addHeader("Cache-Control", "public,max-age=31536000");
+    request->send(response);
+    // request->redirect(captiveportalURL);
+    Serial.println("Served Basic HTML Page");
+  });
+
+  server.onNotFound([](AsyncWebServerRequest* request) {
+    request->redirect(captiveportalURL);
+    Serial.print("Web page not found: ");
+    Serial.print(request->host());
+    Serial.print(" ");
+    Serial.print(request->url());
+    Serial.print(" sent redirect to " + captiveportalURL + "\n");
+  });
+
+  server.begin();
+  if (debugtexts == 1) Serial.println("WordClock OFFLINE MODE captive portal web server started");
+  ShowOfflineIPaddress();  // Display the current Offline Mode IP-address every time on startup
+}
+
+
+// ###########################################################################################################################################
+// # Show the Offline Mode IP-address on the display:
+// ###########################################################################################################################################
+void ShowOfflineIPaddress() {
+  if (useshowip == 1) {
+    // Serial.println("Show current IP-address on the display: " + IpAddress2String(WiFi.softAPIP()));
+    int ipdelay = 2000;
+
+    // Testing the digits:
+    // for (int i = 0; i < 10; i++) {
+    //   back_color();
+    //   // numbers(i, 3);
+    //   // numbers(i, 2);
+    //   numbers(i, 1);
+    //   strip.show();
+    //   delay(ipdelay);
+    // }
+
+    // Octet 1:
+    ClearDisplay();
+    numbers(getDigit(int(WiFi.softAPIP()[0]), 2), 3);
+    numbers(getDigit(int(WiFi.softAPIP()[0]), 1), 2);
+    numbers(getDigit(int(WiFi.softAPIP()[0]), 0), 1);
+    setLED(191, 191, 1);
+    setLED(0, 3, 1);
+    setLED(240, 243, 1);
+    strip.show();
+    delay(ipdelay);
+
+    // // Octet 2:
+    ClearDisplay();
+    numbers(getDigit(int(WiFi.softAPIP()[1]), 2), 3);
+    numbers(getDigit(int(WiFi.softAPIP()[1]), 1), 2);
+    numbers(getDigit(int(WiFi.softAPIP()[1]), 0), 1);
+    setLED(191, 191, 1);
+    setLED(0, 7, 1);
+    setLED(240, 247, 1);
+    strip.show();
+    delay(ipdelay);
+
+    // // Octet 3:
+    ClearDisplay();
+    numbers(getDigit(int(WiFi.softAPIP()[2]), 2), 3);
+    numbers(getDigit(int(WiFi.softAPIP()[2]), 1), 2);
+    numbers(getDigit(int(WiFi.softAPIP()[2]), 0), 1);
+    setLED(191, 191, 1);
+    setLED(0, 11, 1);
+    setLED(240, 251, 1);
+    strip.show();
+    delay(ipdelay);
+
+    // // Octet 4:
+    ClearDisplay();
+    numbers(getDigit(int(WiFi.softAPIP()[3]), 2), 3);
+    numbers(getDigit(int(WiFi.softAPIP()[3]), 1), 2);
+    numbers(getDigit(int(WiFi.softAPIP()[3]), 0), 1);
+    setLED(0, 15, 1);
+    setLED(240, 255, 1);
+    strip.show();
+    delay(ipdelay);
+  }
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Use Offline Mode switch:
+// ###########################################################################################################################################
+void switchOffline(Control* sender, int value) {
+  updatedevice = false;
+  Serial.println("Offline Mode change: Restart request");
+  switch (value) {
+    case S_ACTIVE:
+      UseOnlineMode = 1;  // Online
+      useshowip = useshowip_default;
+      break;
+    case S_INACTIVE:
+      UseOnlineMode = 0;  // Offline
+      useshowip = 1;
+      break;
+  }
+  changedvalues = true;
+  setFlashValues();  // Save values!
+  ClearDisplay();
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  strip.show();
+  Serial.println("Offline Mode change: Perform restart now");
+  delay(1000);
+  ESP.restart();
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Show or hide the Operation Mode hints:
+// ###########################################################################################################################################
+void switchOMhints(Control* sender, int value) {
+  updatedevice = false;
+  switch (value) {
+    case S_ACTIVE:
+      showOMhints = 1;  // Show
+      ESPUI.updateVisibility(OfflineModeHint1, true);
+      ESPUI.updateVisibility(OfflineModeHint2, true);
+      ESPUI.updateVisibility(OfflineModeHint3, true);
+      ESPUI.jsonReload();
+      break;
+    case S_INACTIVE:
+      showOMhints = 0;  // Hide
+      ESPUI.updateVisibility(OfflineModeHint1, false);
+      ESPUI.updateVisibility(OfflineModeHint2, false);
+      ESPUI.updateVisibility(OfflineModeHint3, false);
+      break;
+  }
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Manual Offline Mode offset hour setting
+// ###########################################################################################################################################
+void SetOfflineHourOffset(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  iHourOffset = sender->value.toInt();
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Time Zone selection:
+// ###########################################################################################################################################
+void SetMyTimeZone(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  myTimeZone = sender->value;
+  changedvalues = true;
+  updatedevice = true;
+  setFlashValues();  // Save values!
+  ClearDisplay();
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  strip.show();
+  Serial.println("Time Zone change: Perform restart now");
+  delay(1000);
+  ESP.restart();
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Time Server selection:
+// ###########################################################################################################################################
+void SetMyTimeServer(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  if (sender->value == "Your local router") {
+    myTimeServer = IpAddress2String(WiFi.gatewayIP());
+  } else {
+    myTimeServer = sender->value;
+  }
+  changedvalues = true;
+  updatedevice = true;
+  setFlashValues();  // Save values!
+  ClearDisplay();
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  strip.show();
+  Serial.println("Time Server change: Perform restart now");
+  Serial.println("Time Server set to: " + String(sender->value));
+  delay(1000);
+  ESP.restart();
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Manual time setting from device (PC, tablet, smartphone) as long as the Offline Mode web portal is opened:
+// ###########################################################################################################################################
+void getTimeCallback(Control* sender, int type) {
+  if (type == B_UP) {
+    ESPUI.updateTime(timeId);
+  }
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Manual time setting from device (PC, tablet, smartphone):
+// ###########################################################################################################################################
+void timeCallback(Control* sender, int type) {
+  updatedevice = false;
+  if (type == TM_VALUE) {
+    // Serial.print("Auto Time by device: ");
+    // Serial.println(sender->value);
+    // ESPUI.print(statusTimeFromDevice, String(sender->value));
+
+    String calTimestamp = String(sender->value);
+    struct tm tm;
+    // Test String to get all values:
+    // Serial.println("Parsing " + calTimestamp);  // 2024-01-04T18:33:37.294Z
+    // #######################################################
+    // for (int i = 0; i <= 25; i++) {
+    //   Serial.print(i);
+    //   Serial.print(" = ");
+    //   Serial.println(calTimestamp.substring(i).toInt());
+    // }
+    // #######################################################
+
+    // Date not used yet:
+    // String year = calTimestamp.substring(0, 4);
+    // String month = calTimestamp.substring(4, 6);
+    // if (month.startsWith("0")) {
+    //   month = month.substring(1);
+    // }
+    // String day = calTimestamp.substring(6, 8);
+    // if (day.startsWith("0")) {
+    //   month = day.substring(1);
+    // }
+    // tm.tm_year = year.toInt() - 1900;
+    // tm.tm_mon = month.toInt() - 1;
+    // tm.tm_mday = day.toInt();
+    tm.tm_hour = calTimestamp.substring(11).toInt();  // Hour from string
+    tm.tm_min = calTimestamp.substring(14).toInt();   // Minute from string
+    tm.tm_sec = calTimestamp.substring(17).toInt();   // Second from string
+    iHour = tm.tm_hour;
+    iMinute = tm.tm_min;
+    iSecond = tm.tm_sec;
+
+    // Test a special time:
+    if (testspecialtimeOFF == 1) {
+      // Serial.println("Special time test active in Offline Mode: " + String(test_hourOFF) + ":" + String(test_minuteOFF) + ":" + String(test_secondOFF));
+      iHour = test_hourOFF;
+      iMinute = test_minuteOFF;
+      iSecond = test_secondOFF;
+    }
+
+    ESPUI.print(statusTimeFromDevice, String(iHour) + ":" + String(iMinute) + ":" + String(iSecond));  // Update GUI: Time from device
+    if (iHourOffset >= 0) {
+      // Serial.println("iHour OLD: " + String(iHour));
+      // Serial.println("iHour + Offset: " + String(iHourOffset));  // Set stored hour offset to received hour
+      iHour = iHour + iHourOffset;
+      // Serial.println("iHour NEW: " + String(iHour));
+    }
+    if ((iHourOffset <= -1)) {
+      // Serial.println("iHour OLD: " + String(iHour));
+      // Serial.println("iHour - Offset: " + String(iHourOffset));
+      iHour = iHourOffset + iHour;
+      // Serial.println("iHour NEW: " + String(iHour));
+    }
+    int xHour = iHour;
+    if (xHour >= 24) xHour = xHour - 24;                                                                 // Mid night corrections because of offset calculation
+    if (xHour < 0) xHour = xHour + 24;                                                                   // Mid night corrections because of offset calculation
+    ESPUI.print(statusTimeSetOffline, String(xHour) + ":" + String(iMinute) + ":" + String(iSecond));    // Update GUI: Calculated time with offset for negative offset
+    if (debugtexts == 1) Serial.println(String(xHour) + ":" + String(iMinute) + ":" + String(iSecond));  // Test output
+    rtc.setTime(iSecond, iMinute, xHour, 1, 1, 2024);                                                    // Set time on device RTC: (ss, mm, hh, DD, MM, YYYY) --> Date not used yet
+    checkforNightMode();                                                                                 // Night Mode check
+    updatenow = true;
+    updatedevice = true;
+  }
+  delay(1000);
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Check if Night Mode needs to be set depending on the time:
+// ###########################################################################################################################################
+void checkforNightMode() {
+  if (usenightmode == 1) {
+    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
+      ESPUI.print(statusNightModeID, "Day time");
+      if ((iHour == 0) && (day_time_stop == 23)) ESPUI.print(statusNightModeID, "Night time");  // Special function if day_time_stop set to 23 and time is 24, so 0...
+    } else {
+      ESPUI.print(statusNightModeID, "Night time");
+    }
+  } else {
+    ESPUI.print(statusNightModeID, "Night mode not used");
+  }
 }
 
 
