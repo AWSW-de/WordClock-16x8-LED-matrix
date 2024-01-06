@@ -44,8 +44,8 @@ Images of 2023-V1 with stencil font and 2023-V2 and 2023-V3 with regular font:
 
 <img src="./Images/A0B50A9B-8A43-4066-939B-C25B38242FDF.jpeg">
 
-<img src="./Images/IMG_2578.jpg">
-
-<img src="./Images/IMG_2579.jpg">
+<img src="./Images/IMG_3197.jpeg">
+<img src="./Images/IMG_3198.jpeg">
+<img src="./Images/IMG_3199.jpeg">
 
 <hr>
