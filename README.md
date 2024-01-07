@@ -20,11 +20,21 @@ The designs are available in:
 Happy printing =)
 
 
-Setup video instructions available for <a href="https://www.youtube.com/watch?v=BrVKY1sfZgI">Microsoft Windows 10/11</a> and <a href="https://www.youtube.com/watch?v=GptDFKhga0k">Apple macOS</a>.
-
-[![Microsoft Windows 10/11](http://img.youtube.com/vi/BrVKY1sfZgI/0.jpg)](http://www.youtube.com/watch?v=BrVKY1sfZgI "Microsoft Windows 10/11")
+<hr>
 
 
+Setup video instructions available for <a href="https://www.youtube.com/watch?v=BrVKY1sfZgI">Microsoft Windows 10/11</a> and <a href="https://www.youtube.com/watch?v=GptDFKhga0k&t=">Apple macOS</a>.
+
+[![Setup Arduino on MS Windows for WordClock](http://img.youtube.com/vi/BrVKY1sfZgI/0.jpg)](http://www.youtube.com/watch?v=BrVKY1sfZgI "Setup Arduino on MS Windows for WordClock")
+
+
+[![Setup Arduino on macOS for WordClock](http://img.youtube.com/vi/GptDFKhga0k&t=3s/0.jpg)](http://www.youtube.com/watch?v=GptDFKhga0k&t=3s "Setup Arduino on macOS for WordClock")
+
+
+[![AWSW WordClock WiFi setup](http://img.youtube.com/vi/OrOy6u-MZ_yV7BTJ/0.jpg)](http://www.youtube.com/watch?v=OrOy6u-MZ_yV7BTJ "AWSW WordClock WiFi setup")
+
+
+[![AWSW WordClock 2023 software V3.0.0](http://img.youtube.com/vi/pJWRE3K3IY&t=7s/0.jpg)](http://www.youtube.com/watch?v=pJWRE3K3IY&t=7s "AWSW WordClock 2023 software V3.0.0")
 
 
 <hr>
