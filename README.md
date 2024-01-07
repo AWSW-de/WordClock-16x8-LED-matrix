@@ -22,6 +22,10 @@ Happy printing =)
 
 Setup video instructions available for <a href="https://www.youtube.com/watch?v=BrVKY1sfZgI">Microsoft Windows 10/11</a> and <a href="https://www.youtube.com/watch?v=GptDFKhga0k">Apple macOS</a>.
 
+[![Microsoft Windows 10/11](http://img.youtube.com/vi/BrVKY1sfZgI/0.jpg)](http://www.youtube.com/watch?v=BrVKY1sfZgI "Microsoft Windows 10/11")
+
+
+
 
 <hr>
 
