@@ -34,8 +34,9 @@ Setup video instructions available for <a href="https://www.youtube.com/watch?v=
 [![AWSW WordClock WiFi setup](http://img.youtube.com/vi/OrOy6u-MZ_yV7BTJ/0.jpg)](http://www.youtube.com/watch?v=OrOy6u-MZ_yV7BTJ "AWSW WordClock WiFi setup")
 
 
-[![AWSW WordClock 2023 software V3.0.0](http://img.youtube.com/vi/pJWRE3K3IY/0.jpg)](http://www.youtube.com/watch?v=pJWRE3K3IY "AWSW WordClock 2023 software V3.0.0")
+[![AWSW WordClock 2023 software V3.0.0](http://img.youtube.com/vi/-pJWRE3K3IY/0.jpg)](http://www.youtube.com/watch?v=-pJWRE3K3IY "AWSW WordClock 2023 software V3.0.0")
 
+https://youtu.be/-pJWRE3K3IY?si=8FxVR6CvyBasa4BV
 
 <hr>
 
