@@ -445,7 +445,7 @@ void setupWebInterface() {
   if (langLEDlayout == 7) selectLangTXT = "Chinese";
   if (langLEDlayout == 8) selectLangTXT = "Swabian German";
   if (langLEDlayout == 9) selectLangTXT = "Bavarian";
-  if (langLEDlayout == 10) selectLangTXT = "Luxemburgish";
+  if (langLEDlayout == 10) selectLangTXT = "Luxembourgish";
   Serial.print("Selected language: ");
   Serial.println(selectLangTXT);
 
@@ -461,7 +461,7 @@ void setupWebInterface() {
   ESPUI.addControl(ControlType::Option, "Chinese", "7", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "Swabian German", "8", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "Bavarian", "9", ControlColor::Alizarin, selectLang);
-  ESPUI.addControl(ControlType::Option, "Luxemburgish", "10", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Luxembourgish", "10", ControlColor::Alizarin, selectLang);
 
   // Current language:
   statusLanguageID = ESPUI.label("Current layout language", ControlColor::Dark, selectLangTXT);
@@ -632,7 +632,7 @@ void call_langauge_select(Control* sender, int type) {
   if (langLEDlayout == 7) selectLangTXT = "Chinese";
   if (langLEDlayout == 8) selectLangTXT = "Swabian German";
   if (langLEDlayout == 9) selectLangTXT = "Bavarian";
-  if (langLEDlayout == 10) selectLangTXT = "Luxemburgish";
+  if (langLEDlayout == 10) selectLangTXT = "Luxembourgish";
   if (debugtexts == 1) {
     Serial.print("Selected language ID: ");
     Serial.println(langLEDlayout);
@@ -4286,7 +4286,7 @@ const char config_html[] PROGMEM = R"rawliteral(
           <option value="7">CHINESE</option>
           <option value="8">SWABIAN GERMAN</option>
           <option value="9">BAVARIAN</option>
-          <option value="10">LUXEMBURGISH</option>
+          <option value="10">LUXEMBOURGISH</option>
         </select>
       </p>
       <p class="error">Errors will be displayed here!</p>
