@@ -4087,184 +4087,250 @@ void SetWLAN(uint32_t color) {
 // ###########################################################################################################################################
 // # Wifi scan function to help you to setup your WiFi connection
 // ###########################################################################################################################################
-void ScanWiFi() {
+int ScanWiFi() {
   Serial.println("Scan WiFi networks - START");
   int n = WiFi.scanNetworks();
   Serial.println("WiFi scan done");
-  Serial.println(" ");
-  if (n == 0) {
-    Serial.println("No WiFi networks found");
-  } else {
-    Serial.print(n);
-    Serial.println(" WiFi networks found:");
-    Serial.println(" ");
-    for (int i = 0; i < n; ++i) {
-      // Print SSID and RSSI for each network found
-      Serial.print(i + 1);
-      Serial.print(": ");
-      Serial.print(WiFi.SSID(i));
-      Serial.print(" (");
-      Serial.print(WiFi.RSSI(i));
-      Serial.print(")");
-      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
-      delay(10);
-    }
-  }
   Serial.println("Scan WiFi networks - END");
+  return n;
 }
 
 
 // ###########################################################################################################################################
 // # Captive Portal web page to setup the device by AWSW:
 // ###########################################################################################################################################
-const char index_html[] PROGMEM = R"=====(
-  <!DOCTYPE html><html><head><title>WordClock</title></head>
-          <style>
+const char index_html[] PROGMEM = R"rawliteral(
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>WordClock Setup</title>
+    <style>
       body {
-      padding: 25px;
-      font-size: 25px;
-      background-color: black;
-      color: white;
+        padding: 25px;
+        font-size: 18px;
+        background-color: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
       }
-      </style>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-   <style>
-    .button {
-      display: inline-block;
-      padding: 15px 25px;
-      font-size: 24px;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-      outline: none;
-      color: #fff;
-      background-color: #4CAF50;
-      border: none;
-      border-radius: 15px;
-      box-shadow: 0 9px #999;
-    }
-    .button:hover {background-color: #3e8e41}
-    .button:active {
-      background-color: #3e8e41;
-      box-shadow: 0 5px #666;
-      transform: translateY(4px);
-    }
+      h1, p { 
+        text-align: center; 
+        margin-bottom: 20px;
+      }
+      input, select { 
+        font-size: 18px; 
+        min-width: 150px;
+      }
+      button {
+        display: inline-block;
+        padding: 15px 25px;
+        margin-top: 15px;
+        font-size: 18px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #fff;
+        background-color: #4CAF50;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 9px #999;
+      }
+      button:hover {
+        background-color: #3e8e41;
+      }
+      button:active {
+        background-color: #3e8e41;
+        box-shadow: 0 5px #666;
+        transform: translateY(4px);
+      }
     </style>
-  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="text/javascript">
+      function disableButtonAndSubmit() {
+        var btn = document.getElementById("submitButton");
+        btn.disabled = true;
+        btn.innerText = 'Scanning WiFis...';
+        setTimeout(function() {
+          document.forms["myForm"].submit();
+        }, 100);
+      }
+    </script>
+  </head>
   <body>
     <form action="/start" name="myForm">
-      <center><b><h1>Welcome to the WordClock setup</h1></b>
-      <h2>Please add your local WiFi credentials<br/><br/>and set your language on the next page</h2><br/>
-      <input type="submit" value="Configure WordClock" class="button">
-     </center></form></body>
+      <center>
+        <h1>Welcome to the WordClock setup</h1>
+        <p>Please add your local WiFi credentials and set your language on the next page</p>
+        <p><button id="submitButton" type="submit" onclick="disableButtonAndSubmit()">Configure WordClock</button></p>
+      </center>
+    </form>
+  </body>
   </html>
- )=====";
+)rawliteral";
 
 
 // ###########################################################################################################################################
 // # Captive Portal web page to setup the device by AWSW:
 // ###########################################################################################################################################
 const char config_html[] PROGMEM = R"rawliteral(
- <!DOCTYPE HTML><html><head><title>WordClock</title>
- <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script language="JavaScript">
-  <!--
-  function validateForm() {
-  var x = document.forms["myForm"]["mySSID"].value;
-  if (x == "") {
-    alert("WiFi SSID must be set");
-    return false;
-  }
-  var y = document.forms["myForm"]["myPW"].value;
-  if (y == "") {
-    alert("WiFi password must be set");
-    return false;
-  }
-  } 
-  //-->
-  </script>
-  </head>
-  
-   <style>
-      body {
-      padding: 25px;
-      font-size: 25px;
-      background-color: black;
-      color: white;
+  <!DOCTYPE HTML>
+  <html>
+  <head>
+    <title>WordClock Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script language="JavaScript">
+      function updateSSIDInput() {
+        var ssidSelect = document.getElementById("mySSIDSelect");
+        if (ssidSelect && ssidSelect.options.length > 0) {
+          document.getElementById("mySSID").value = ssidSelect.options[ssidSelect.selectedIndex].value;
+        }
       }
-      </style>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-   <style>
-    .button {
-      display: inline-block;
-      padding: 15px 25px;
-      font-size: 24px;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-      outline: none;
-      color: #fff;
-      background-color: #4CAF50;
-      border: none;
-      border-radius: 15px;
-      box-shadow: 0 9px #999;
-    }
-    .button:hover {background-color: #3e8e41}
-    .button:active {
-      background-color: #3e8e41;
-      box-shadow: 0 5px #666;
-      transform: translateY(4px);
-    }
+       function validateForm() {
+        var errorParagraph = document.querySelector('.error');
+        errorParagraph.style.display = 'none';
+        errorParagraph.innerHTML = '';
+        if (document.forms["myForm"]["mySSID"].value == "") {
+          errorParagraph.innerHTML = "WiFi SSID must be set. ";
+          errorParagraph.style.display = 'block';
+          return false;
+        }
+        if (document.forms["myForm"]["myPW"].value == "") {
+          errorParagraph.innerHTML = "WiFi password must be set. ";
+          errorParagraph.style.display = 'block'; 
+          return false;
+        }
+        return true;
+      }
+      function disableButtonAndSubmit() {
+        if (validateForm()) {
+          var btn = document.getElementById("submitButton");
+          btn.innerText = 'Restarting WordClock...';
+          btn.disabled = true;
+          setTimeout(function() {
+            document.forms["myForm"].submit();
+          }, 1000);
+        }
+      }
+      window.onload = function() {
+        var ssidSelect = document.getElementById("mySSIDSelect");
+        if (ssidSelect) {
+          ssidSelect.addEventListener('change', updateSSIDInput);
+        }
+      };
+    </script>
+    <style>
+      body {
+        padding: 25px;
+        font-size: 18px;
+        background-color: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
+      }
+      h1, p { 
+        text-align: center; 
+        margin-bottom: 20px;
+      }
+      p.error { 
+        color: #ff0000; 
+        display: none;
+      }
+      input, select { 
+        font-size: 18px; 
+        min-width: 150px;
+      }
+      button {
+        display: inline-block;
+        padding: 15px 25px;
+        margin-top: 15px;
+        font-size: 18px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #fff;
+        background-color: #4CAF50;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 9px #999;
+      }
+      button:hover { background-color: #3e8e41 }
+      button:active {
+        background-color: #3e8e41;
+        box-shadow: 0 5px #666;
+        transform: translateY(4px);
+      }
     </style>
-  
+  </head>
   <body>
-  <form action="/get" name="myForm" onsubmit="return validateForm()" >
-    <center><b><h1>Initial WordClock setup:</h1></b>
-    <label for="mySSID">Enter your WiFi SSID:</label><br/>
-    <input type="text" id="mySSID" name="mySSID" value="" style="width: 200px;" /><br/><br/>
-    <label for="myPW">Enter your WiFi password:</label><br/>
-    <input type="text" id="myPW" name="myPW" value="" style="width: 200px;" /><br/><br/>
-    <label for="setlanguage">Select your language layout:</label><br/>
-    <select id="setlanguage" name="setlanguage" style="width: 200px;">
-    <option value=0 selected>GERMAN</option>
-    <option value=1>ENGLISH</option>
-    <option value=2>DUTCH</option>
-    <option value=3>SWEDISH</option>
-    <option value=4>ITALIAN</option>
-    <option value=5>FRENCH</option>
-    <option value=6>SWISS GERMAN</option>
-    <option value=7>CHINESE</option>
-    <option value=8>SWABIAN GERMAN</option>
-    <option value=9>BAVARIAN</option>
-    <option value=10>LUXEMBURGISH</option>
-    </select><br/><br/>
-    <input type="submit" value="Save values and start WordClock" class="button">
-  </center></form></body></html>)rawliteral";
+    <form action="/get" name="myForm" onsubmit="return validateForm()">
+      <h1>Initial WordClock setup:</h1>
+      <!-- Select element will be dynamically added here -->
+      <p>
+        <label for="mySSID">Enter your WiFi SSID:</label><br />
+        <input id="mySSID" name="mySSID" value="" />
+      </p>
+      <p>
+        <label for="myPW">Enter your WiFi password:</label><br/>
+        <input type="text" id="myPW" name="myPW" value="" />
+      </p>
+      <p>
+        <label for="setlanguage">Select your language layout:</label><br/>
+        <select id="setlanguage" name="setlanguage">
+          <option value="0" selected>GERMAN</option>
+          <option value="1">ENGLISH</option>
+          <option value="2">DUTCH</option>
+          <option value="3">SWEDISH</option>
+          <option value="4">ITALIAN</option>
+          <option value="5">FRENCH</option>
+          <option value="6">SWISS GERMAN</option>
+          <option value="7">CHINESE</option>
+          <option value="8">SWABIAN GERMAN</option>
+          <option value="9">BAVARIAN</option>
+          <option value="10">LUXEMBURGISH</option>
+        </select>
+      </p>
+      <p class="error">Errors will be displayed here!</p>
+      <p>
+        <button id="submitButton" onclick="disableButtonAndSubmit()">Save values</button>
+      </p>
+    </form>
+  </body>
+  </html>
+)rawliteral";
 
 
 // ###########################################################################################################################################
 // # Captive Portal web page to setup the device by AWSW:
 // ###########################################################################################################################################
 const char saved_html[] PROGMEM = R"rawliteral(
- <!DOCTYPE HTML><html><head>
-  <title>Initial WordClock setup</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"></head>
+  <!DOCTYPE HTML>
+  <html>
+  <head>
+    <title>WordClock Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-  body {
-      padding: 25px;
-      font-size: 25px;
-      background-color: black;
-      color: white;
-    }
-  </style>
+      body {
+        padding: 25px;
+        font-size: 18px;
+        background-color: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
+      }
+      h1, p { 
+        text-align: center; 
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
   <body>
-    <center><h2><b>Settings saved...<br><br>
-    WordClock will now try to connect to the named WiFi with the set language.<br><br>
-    If it failes the WIFI leds will flash red and then please try to connect to the temporary access point again.<br><br>
-    Please close this page now and enjoy your WordClock. =)</h2></b>
- </body></html>)rawliteral";
+    <h1>Settings saved!</h1>
+    <p>WordClock is now trying to connect to the selected WiFi and display the chosen language.</p>
+    <p>First the WiFi leds will be lit blue and change to green in case of a successful WiFi connection.</p>
+    <p>If the connection fails the WiFi leds will flash red. Then please reconnect to the temporary access point again.</p>
+    <p>Please close this page now, rejoin your selected WiFi and enjoy your WordClock. =)</p>
+  </body>
+  </html>
+)rawliteral";
 
 
 // ###########################################################################################################################################
@@ -4274,8 +4340,35 @@ const char* PARAM_INPUT_1 = "mySSID";
 const char* PARAM_INPUT_2 = "myPW";
 const char* PARAM_INPUT_3 = "setlanguage";
 const String captiveportalURL = "http://192.168.4.1";
+
+String generateConfigHTML(int n) {
+  String html = config_html;
+  Serial.println(" ");
+  if (n > 0) {
+    Serial.print(n);
+    Serial.println(" WiFi networks found:");
+    Serial.println(" ");
+    String ssidList = "<p><label for=\"mySSISelect\">Found these networks:</label><br /><select id=\"mySSIDSelect\" name=\"mySSIDSelect\"><option value=\"\" disabled selected>Choose yours ...</option>";
+    for (int i = 0; i < n; ++i) {
+      ssidList += "<option value=\"" + WiFi.SSID(i) + "\">" + WiFi.SSID(i) + "</option>";
+      // Print SSID and RSSI for each network found
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(")");
+      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "" : "*");
+    }
+    ssidList += "</select></p>";
+    html.replace("<!-- Select element will be dynamically added here -->", ssidList);
+  } else {
+    Serial.println("No WiFi networks found");
+  }
+  return html;
+}
+
 void CaptivePotalSetup() {
-  ScanWiFi();
   const char* temp_ssid = "WordClock";
   const char* temp_password = "";
   WiFi.softAP(temp_ssid, temp_password);
@@ -4326,7 +4419,9 @@ void CaptivePotalSetup() {
   });
 
   server.on("/start", HTTP_GET, [](AsyncWebServerRequest* request) {
-    request->send_P(200, "text/html", config_html);
+    int Wifis = ScanWiFi();
+    String htmlContent = generateConfigHTML(Wifis);;
+    request->send_P(200, "text/html", htmlContent.c_str());
   });
 
   server.on("/connecttest.txt", [](AsyncWebServerRequest* request) {
