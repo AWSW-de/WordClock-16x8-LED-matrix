@@ -61,7 +61,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V3.0.0";
+const char* WORD_CLOCK_VERSION = "V3.2.0";
 
 
 // ###########################################################################################################################################
@@ -87,11 +87,11 @@ bool changedvalues = false;
 bool WiFIsetup = false;
 int iHour, iMinute, iSecond, iDay, iMonth, iYear, intensity, intensity_day, intensity_night, set_web_intensity, intensity_web;
 int redVal_back, greenVal_back, blueVal_back, redVal_time, greenVal_time, blueVal_time, langLEDlayout, statusLanguageID, DayNightSectionID, LEDsettingsSectionID;
-int usenightmode, day_time_start, day_time_stop, statusNightMode, useshowip, usesinglemin, useStartupText, statusLabelID, statusNightModeID, intensity_web_HintID, RandomColor, switchRandomColorID, switchSingleMinutesID;
+int usenightmode, statusNightMode, statusNightModeWarnID, useshowip, usesinglemin, useStartupText, statusLabelID, statusNightModeID, intensity_web_HintID, RandomColor, switchRandomColorID, switchSingleMinutesID;
 int sliderBrightnessDayID, switchNightModeID, sliderBrightnessNightID, call_day_time_startID, call_day_time_stopID, mySetTimeZone, mySetTimeZoneID, mySetTimeServer, mySetTimeServerID;
 int UseOnlineMode, OfflineCurrentHourOffset, iHourOffset, statusTimeFromDevice, statusTimeSetOffline, OfflineModeHint1, OfflineModeHint2, OfflineModeHint3, showOMhints;
 uint16_t text_colour_background, text_colour_time, selectLang, timeId;
-String iStartTime, selectLangTXT, myTimeZone, myTimeServer, Timezone, NTPserver;
+String iStartTime, selectLangTXT, myTimeZone, myTimeServer, Timezone, NTPserver, day_time_start, day_time_stop, statusNightModeIDtxt;
 
 
 // ###########################################################################################################################################
@@ -267,7 +267,7 @@ void setupWebInterface() {
   switchSingleMinutesID = ESPUI.switcher("Show single minutes to display the minute exact time", &switchSingleMinutes, ControlColor::Dark, usesinglemin);
 
   // Show note when intensity is currently controlled via web-url usage and these internal settings get disabled:
-  intensity_web_HintID = ESPUI.label("Manual settings disabled due to web URL usage:", ControlColor::Alizarin, "Restart WordClock or deactivate web control usage via http://" + IpAddress2String(WiFi.localIP()) + ":2023/config?LEDs=1");
+  intensity_web_HintID = ESPUI.label("Manual settings disabled due to web URL usage:", ControlColor::Alizarin, "Restart WordClock or deactivate web control usage via <a href='http://" + IpAddress2String(WiFi.localIP()) + ":2023/config?INTENSITYviaWEB=0' target='_blank' style='color:#ffffff;'>http://" + IpAddress2String(WiFi.localIP()) + ":2023/config?INTENSITYviaWEB=0</a>");
   ESPUI.updateVisibility(intensity_web_HintID, false);
 
 
@@ -285,14 +285,20 @@ void setupWebInterface() {
   // Intensity NIGHT slider selector:
   sliderBrightnessNightID = ESPUI.slider("Brightness at night", &sliderBrightnessNight, ControlColor::Dark, intensity_night, 0, LEDintensityLIMIT);
 
+  // Warning if day/night time setting is wrong:
+  statusNightModeWarnID = ESPUI.label("Night mode settings error", ControlColor::Alizarin, "Wrong setting! 'Day time starts at' needs to be before 'Day time ends after'. Please correct values.");
+  ESPUI.updateVisibility(statusNightModeWarnID, false);
+
   // Night mode status:
   statusNightModeID = ESPUI.label("Night mode status", ControlColor::Dark, "Night mode not used");
 
   // Day mode start time:
-  call_day_time_startID = ESPUI.number("Day time starts at", call_day_time_start, ControlColor::Dark, day_time_start, 0, 11);
+  call_day_time_startID = ESPUI.text("Day time starts at", call_day_time_start, ControlColor::Dark, String(day_time_start));
+  ESPUI.setInputType(call_day_time_startID, "time");
 
   // Day mode stop time:
-  call_day_time_stopID = ESPUI.number("Day time ends after", call_day_time_stop, ControlColor::Dark, day_time_stop, 12, 23);
+  call_day_time_stopID = ESPUI.text("Day time ends after", call_day_time_stop, ControlColor::Dark, String(day_time_stop));
+  ESPUI.setInputType(call_day_time_stopID, "time");
 
 
 
@@ -306,6 +312,35 @@ void setupWebInterface() {
 
     // Show IP-address on startup:
     ESPUI.switcher("Show IP-address on startup", &switchShowIP, ControlColor::Dark, useshowip);
+  }
+
+
+
+  // Section WiFi:
+  // #############
+  if (UseOnlineMode == 1) {
+    ESPUI.separator("WiFi:");
+
+    // WiFi SSID:
+    ESPUI.label("SSID", ControlColor::Dark, WiFi.SSID());
+
+    // WiFi signal strength:
+    ESPUI.label("Signal", ControlColor::Dark, String(WiFi.RSSI()) + "dBm");
+
+    // Hostname:
+    ESPUI.label("Hostname in your router", ControlColor::Dark, "<a href='http://" + String(WiFi.getHostname()) + "' target='_blank' style='color:#ffffff;'>" + String(WiFi.getHostname()) + "</a>");
+
+    // WiFi MAC-address:
+    ESPUI.label("MAC address", ControlColor::Dark, WiFi.macAddress());
+
+    // WiFi ip-address:
+    ESPUI.label("IP-address", ControlColor::Dark, "<a href='http://" + IpAddress2String(WiFi.localIP()) + "' target='_blank' style='color:#ffffff;'>" + IpAddress2String(WiFi.localIP()) + "</a>");
+
+    // WiFi DNS address:
+    ESPUI.label("DNS address", ControlColor::Dark, IpAddress2String(WiFi.dnsIP()));
+
+    // WiFi Gateway address:
+    ESPUI.label("Gateway address", ControlColor::Dark, IpAddress2String(WiFi.gatewayIP()));
   }
 
 
@@ -368,35 +403,6 @@ void setupWebInterface() {
 
 
 
-  // Section WiFi:
-  // #############
-  if (UseOnlineMode == 1) {
-    ESPUI.separator("WiFi:");
-
-    // WiFi SSID:
-    ESPUI.label("SSID", ControlColor::Dark, WiFi.SSID());
-
-    // WiFi signal strength:
-    ESPUI.label("Signal", ControlColor::Dark, String(WiFi.RSSI()) + "dBm");
-
-    // Hostname:
-    ESPUI.label("Hostname in your router", ControlColor::Dark, WiFi.getHostname());
-
-    // WiFi MAC-address:
-    ESPUI.label("MAC address", ControlColor::Dark, WiFi.macAddress());
-
-    // WiFi ip-address:
-    ESPUI.label("IP-address", ControlColor::Dark, IpAddress2String(WiFi.localIP()));
-
-    // WiFi DNS address:
-    ESPUI.label("DNS address", ControlColor::Dark, IpAddress2String(WiFi.dnsIP()));
-
-    // WiFi Gateway address:
-    ESPUI.label("Gateway address", ControlColor::Dark, IpAddress2String(WiFi.gatewayIP()));
-  }
-
-
-
   // Section smart home control via web URLs:
   // ########################################
   if (UseOnlineMode == 1) {
@@ -409,7 +415,7 @@ void setupWebInterface() {
     ESPUI.label("Functions", ControlColor::Dark, "You can turn the LEDs off or on via http commands to reduce energy consumption.");
 
     // Usage note:
-    ESPUI.label("Usage hints and examples", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":2023 or http://" + String(WiFi.getHostname()) + ":2023 ");
+    ESPUI.label("Usage hints and examples", ControlColor::Dark, "<a href='http://" + IpAddress2String(WiFi.localIP()) + ":2023' target='_blank' style='color:#ffffff;'>http://" + IpAddress2String(WiFi.localIP()) + ":2023</a> or <a href='http://" + String(WiFi.getHostname()) + ":2023' target='_blank' style='color:#ffffff;'>http://" + String(WiFi.getHostname()) + ":2023</a>");
   }
 
 
@@ -423,10 +429,10 @@ void setupWebInterface() {
     ESPUI.button("Activate update mode", &buttonUpdate, ControlColor::Dark, "Activate update mode", (void*)1);
 
     // Update URL
-    ESPUI.label("Update URL", ControlColor::Dark, "http://" + IpAddress2String(WiFi.localIP()) + ":8080");
+    ESPUI.label("Update URLs", ControlColor::Dark, "<a href='http://" + IpAddress2String(WiFi.localIP()) + ":8080' target='_blank' style='color:#ffffff;'>http://" + IpAddress2String(WiFi.localIP()) + ":8080</a> or <a href='http://" + String(WiFi.getHostname()) + ":8080' target='_blank' style='color:#ffffff;'>http://" + String(WiFi.getHostname()) + ":8080</a>");
 
     // AWSW software GitHub repository:
-    ESPUI.label("Download newer software updates here", ControlColor::Dark, "https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023");
+    ESPUI.label("Download newer software updates here", ControlColor::Dark, "<a href='https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023' target='_blank' style='color:#ffffff;'>https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023</a>");
   }
 
 
@@ -495,7 +501,7 @@ void setupWebInterface() {
 
 
   checkforNightMode();       // Check for night mode settings on startup
-  ESPUI.begin("WordClock");  // Deploy the page:
+  ESPUI.begin("WordClock");  // Deploy the page
 }
 
 
@@ -503,7 +509,7 @@ void setupWebInterface() {
 // # Read settings from flash:
 // ###########################################################################################################################################
 void getFlashValues() {
-  // if (debugtexts == 1) Serial.println("Read settings from flash: START");
+  if (debugtexts == 1) Serial.println("Read settings from flash: START");
   langLEDlayout = preferences.getUInt("langLEDlayout", langLEDlayout_default);
   myTimeZone = preferences.getString("myTimeZone", Timezone_default);
   Timezone = myTimeZone;
@@ -520,14 +526,14 @@ void getFlashValues() {
   intensity_day = preferences.getUInt("intensity_day", intensity_day_default);
   intensity_night = preferences.getUInt("intensity_night", intensity_night_default);
   usenightmode = preferences.getUInt("usenightmode", usenightmode_default);
-  day_time_start = preferences.getUInt("day_time_start", day_time_start_default);
-  day_time_stop = preferences.getUInt("day_time_stop", day_time_stop_default);
+  day_time_start = preferences.getString("day_time_start", day_time_start_default);
+  day_time_stop = preferences.getString("day_time_stop", day_time_stop_default);
   iHourOffset = preferences.getUInt("iHourOffset", iHourOffset_default);
   useshowip = preferences.getUInt("useshowip", useshowip_default);
   useStartupText = preferences.getUInt("useStartupText", useStartupText_default);
   usesinglemin = preferences.getUInt("usesinglemin", usesinglemin_default);
   RandomColor = preferences.getUInt("RandomColor", RandomColor_default);
-  // if (debugtexts == 1) Serial.println("Read settings from flash: END");
+  if (debugtexts == 1) Serial.println("Read settings from flash: END");
 }
 
 
@@ -535,7 +541,7 @@ void getFlashValues() {
 // # Write settings to flash:
 // ###########################################################################################################################################
 void setFlashValues() {
-  // if (debugtexts == 1) Serial.println("Write settings to flash: START");
+  if (debugtexts == 1) Serial.println("Write settings to flash: START");
   changedvalues = false;
   preferences.putUInt("langLEDlayout", langLEDlayout);
   preferences.putString("myTimeZone", myTimeZone);
@@ -551,14 +557,14 @@ void setFlashValues() {
   preferences.putUInt("intensity_day", intensity_day);
   preferences.putUInt("intensity_night", intensity_night);
   preferences.putUInt("usenightmode", usenightmode);
-  preferences.putUInt("day_time_start", day_time_start);
-  preferences.putUInt("day_time_stop", day_time_stop);
+  preferences.putString("day_time_start", day_time_start);
+  preferences.putString("day_time_stop", day_time_stop);
   preferences.putUInt("iHourOffset", iHourOffset);
   preferences.putUInt("useshowip", useshowip);
   preferences.putUInt("useStartupText", useStartupText);
   preferences.putUInt("usesinglemin", usesinglemin);
   preferences.putUInt("RandomColor", RandomColor);
-  // if (debugtexts == 1) Serial.println("Write settings to flash: END");
+  if (debugtexts == 1) Serial.println("Write settings to flash: END");
   checkforNightMode();
   updatenow = true;  // Update display now...
 }
@@ -596,8 +602,8 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
   preferences.putUInt("useshowip", useshowip_default);
   preferences.putUInt("useStartupText", useStartupText_default);
   preferences.putUInt("usenightmode", usenightmode_default);
-  preferences.putUInt("day_time_stop", day_time_stop_default);
-  preferences.putUInt("day_time_stop", day_time_stop_default);
+  preferences.putString("day_time_stop", day_time_stop_default);
+  preferences.putString("day_time_stop", day_time_stop_default);
   preferences.putUInt("usesinglemin", usesinglemin_default);
   preferences.putUInt("RandomColor", RandomColor_default);
   preferences.putString("myTimeZone", Timezone_default);
@@ -1056,6 +1062,7 @@ int getDigit(int number, int pos) {
 // ###########################################################################################################################################
 void buttonRestart(Control* sender, int type, void* param) {
   updatedevice = false;
+  delay(250);
   ResetTextLEDs(strip.Color(0, 255, 0));
   if (changedvalues == true) setFlashValues();  // Write settings to flash
   preferences.end();
@@ -1092,32 +1099,20 @@ void buttonWiFiReset(Control* sender, int type, void* param) {
 void buttonUpdate(Control* sender, int type, void* param) {
   preferences.end();
   updatedevice = false;
-  ESPUI.print(statusLabelID, "Update requested");
+  delay(1000);
   ESPUI.updateButton(sender->id, "Update mode active now - Use the update url: >>>");
   if (updatemode == false) {
     updatemode = true;
     int32_t c = strip.Color(0, 0, 255);
-    int TextWait = 500;
-    showtext("U", TextWait, c);
-    showtext("P", TextWait, c);
-    showtext("D", TextWait, c);
-    showtext("A", TextWait, c);
-    showtext("T", TextWait, c);
-    showtext("E", TextWait, c);
-    setLED(0, 0, 1);
-    setLED(15, 15, 1);
-    setLED(239, 239, 1);
-    setLED(224, 224, 1);
-    int myArray[50];
-    memset(myArray, 0, sizeof(myArray));
-    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };  // U
-    memcpy(myArray, myArray2, sizeof(myArray2));
-    for (int element : myArray) {
-      if (element != 0) {
-        strip.setPixelColor(element, c);
-      }
-    }
-    strip.show();
+    int TextWait = 250;
+    showtext('U', TextWait, c);
+    showtext('P', TextWait, c);
+    showtext('D', TextWait, c);
+    showtext('A', TextWait, c);
+    showtext('T', TextWait, c);
+    showtext('E', TextWait, c);
+    showtext(' ', TextWait, c);
+    showtext('U', TextWait, c);
     Serial.println("Status: Update request");
   }
 }
@@ -1239,12 +1234,6 @@ void switchNightMode(Control* sender, int value) {
   switch (value) {
     case S_ACTIVE:
       usenightmode = 1;
-      if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
-        intensity = intensity_day;
-        if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
-      } else {
-        intensity = intensity_night;
-      }
       break;
     case S_INACTIVE:
       intensity = intensity_day;
@@ -1341,6 +1330,396 @@ void switchStartupText(Control* sender, int value) {
 
 
 // ###########################################################################################################################################
+// # GUI: Convert hex color value to RGB int values - TIME:
+// ###########################################################################################################################################
+void getRGBTIME(String hexvalue) {
+  updatedevice = false;
+  delay(1000);
+  hexvalue.toUpperCase();
+  char c[7];
+  hexvalue.toCharArray(c, 8);
+  int red = hexcolorToInt(c[1], c[2]);
+  int green = hexcolorToInt(c[3], c[4]);
+  int blue = hexcolorToInt(c[5], c[6]);
+  redVal_time = red;
+  greenVal_time = green;
+  blueVal_time = blue;
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Convert hex color value to RGB int values - BACKGROUND:
+// ###########################################################################################################################################
+void getRGBBACK(String hexvalue) {
+  updatedevice = false;
+  delay(1000);
+  hexvalue.toUpperCase();
+  char c[7];
+  hexvalue.toCharArray(c, 8);
+  int red = hexcolorToInt(c[1], c[2]);
+  int green = hexcolorToInt(c[3], c[4]);
+  int blue = hexcolorToInt(c[5], c[6]);
+  redVal_back = red;
+  greenVal_back = green;
+  blueVal_back = blue;
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Convert hex color value to RGB int values - helper function:
+// ###########################################################################################################################################
+int hexcolorToInt(char upper, char lower) {
+  int uVal = (int)upper;
+  int lVal = (int)lower;
+  uVal = uVal > 64 ? uVal - 55 : uVal - 48;
+  uVal = uVal << 4;
+  lVal = lVal > 64 ? lVal - 55 : lVal - 48;
+  return uVal + lVal;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Color change for time color:
+// ###########################################################################################################################################
+#define SLIDER_UPDATE_TIME 150  // Wait at least 100 ms before allowing another slider update --> Bug fix for color slider crashing ESP32
+void colCallTIME(Control* sender, int type) {
+  static unsigned long last_slider_update = 0;  // Track the time of the last slider update
+  if ((millis() - last_slider_update >= SLIDER_UPDATE_TIME)) {
+    getRGBTIME(sender->value);
+    last_slider_update = millis();
+    if (debugtexts == 1) {
+      Serial.println(type);
+      Serial.println(sender->value);
+    }
+  }
+  return;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Color change for background color:
+// ###########################################################################################################################################
+#define SLIDER_UPDATE_BACK 150  // Wait at least 100 ms before allowing another slider update --> Bug fix for color slider crashing ESP32
+void colCallBACK(Control* sender, int type) {
+  static unsigned long last_slider_update = 0;  // Track the time of the last slider update
+  if ((type == 10) && (millis() - last_slider_update >= SLIDER_UPDATE_BACK)) {
+    getRGBBACK(sender->value);
+    last_slider_update = millis();
+    if (debugtexts == 1) {
+      Serial.println(type);
+      Serial.println(sender->value);
+    }
+  }
+  return;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Slider change for LED intensity: DAY
+// ###########################################################################################################################################
+void sliderBrightnessDay(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  intensity_day = sender->value.toInt();
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Slider change for LED intensity: NIGHT
+// ###########################################################################################################################################
+void sliderBrightnessNight(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  intensity_night = sender->value.toInt();
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Time Day Mode Start
+// ###########################################################################################################################################
+void call_day_time_start(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  day_time_start = sender->value;
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Time Day Mode Stop
+// ###########################################################################################################################################
+void call_day_time_stop(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  day_time_stop = sender->value;
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Convert IP-address value to string:
+// ###########################################################################################################################################
+String IpAddress2String(const IPAddress& ipAddress) {
+  return String(ipAddress[0]) + String(".") + String(ipAddress[1]) + String(".") + String(ipAddress[2]) + String(".") + String(ipAddress[3]);
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Use Offline Mode switch:
+// ###########################################################################################################################################
+void switchOffline(Control* sender, int value) {
+  updatedevice = false;
+  Serial.println("Offline Mode change: Restart request");
+  switch (value) {
+    case S_ACTIVE:
+      UseOnlineMode = 1;  // Online
+      useshowip = useshowip_default;
+      break;
+    case S_INACTIVE:
+      UseOnlineMode = 0;  // Offline
+      useshowip = 1;
+      break;
+  }
+  changedvalues = true;
+  setFlashValues();  // Save values!
+  ClearDisplay();
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  strip.show();
+  Serial.println("Offline Mode change: Perform restart now");
+  delay(1000);
+  ESP.restart();
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Show or hide the Operation Mode hints:
+// ###########################################################################################################################################
+void switchOMhints(Control* sender, int value) {
+  updatedevice = false;
+  switch (value) {
+    case S_ACTIVE:
+      showOMhints = 1;  // Show
+      ESPUI.updateVisibility(OfflineModeHint1, true);
+      ESPUI.updateVisibility(OfflineModeHint2, true);
+      ESPUI.updateVisibility(OfflineModeHint3, true);
+      ESPUI.jsonReload();
+      break;
+    case S_INACTIVE:
+      showOMhints = 0;  // Hide
+      ESPUI.updateVisibility(OfflineModeHint1, false);
+      ESPUI.updateVisibility(OfflineModeHint2, false);
+      ESPUI.updateVisibility(OfflineModeHint3, false);
+      break;
+  }
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Manual Offline Mode offset hour setting
+// ###########################################################################################################################################
+void SetOfflineHourOffset(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  iHourOffset = sender->value.toInt();
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Time Zone selection:
+// ###########################################################################################################################################
+void SetMyTimeZone(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  myTimeZone = sender->value;
+  changedvalues = true;
+  updatedevice = true;
+  setFlashValues();  // Save values!
+  ClearDisplay();
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  strip.show();
+  Serial.println("Time Zone change: Perform restart now");
+  delay(1000);
+  ESP.restart();
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Time Server selection:
+// ###########################################################################################################################################
+void SetMyTimeServer(Control* sender, int type) {
+  updatedevice = false;
+  delay(1000);
+  if (sender->value == "Your local router") {
+    myTimeServer = IpAddress2String(WiFi.gatewayIP());
+  } else {
+    myTimeServer = sender->value;
+  }
+  changedvalues = true;
+  updatedevice = true;
+  setFlashValues();  // Save values!
+  ClearDisplay();
+  ResetTextLEDs(strip.Color(0, 255, 0));
+  strip.show();
+  Serial.println("Time Server change: Perform restart now");
+  Serial.println("Time Server set to: " + String(sender->value));
+  delay(1000);
+  ESP.restart();
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Manual time setting from device (PC, tablet, smartphone) as long as the Offline Mode web portal is opened:
+// ###########################################################################################################################################
+void getTimeCallback(Control* sender, int type) {
+  if (type == B_UP) {
+    ESPUI.updateTime(timeId);
+  }
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Manual time setting from device (PC, tablet, smartphone):
+// ###########################################################################################################################################
+void timeCallback(Control* sender, int type) {
+  updatedevice = false;
+  if (type == TM_VALUE) {
+    // Serial.print("Auto Time by device: ");
+    // Serial.println(sender->value);
+    // ESPUI.print(statusTimeFromDevice, String(sender->value));
+
+    String calTimestamp = String(sender->value);
+    struct tm tm;
+    // Test String to get all values:
+    // Serial.println("Parsing " + calTimestamp);  // 2024-01-04T18:33:37.294Z
+    // #######################################################
+    // for (int i = 0; i <= 25; i++) {
+    //   Serial.print(i);
+    //   Serial.print(" = ");
+    //   Serial.println(calTimestamp.substring(i).toInt());
+    // }
+    // #######################################################
+
+    // Date not used yet:
+    // String year = calTimestamp.substring(0, 4);
+    // String month = calTimestamp.substring(4, 6);
+    // if (month.startsWith("0")) {
+    //   month = month.substring(1);
+    // }
+    // String day = calTimestamp.substring(6, 8);
+    // if (day.startsWith("0")) {
+    //   month = day.substring(1);
+    // }
+    // tm.tm_year = year.toInt() - 1900;
+    // tm.tm_mon = month.toInt() - 1;
+    // tm.tm_mday = day.toInt();
+    tm.tm_hour = calTimestamp.substring(11).toInt();  // Hour from string
+    tm.tm_min = calTimestamp.substring(14).toInt();   // Minute from string
+    tm.tm_sec = calTimestamp.substring(17).toInt();   // Second from string
+    iHour = tm.tm_hour;
+    iMinute = tm.tm_min;
+    iSecond = tm.tm_sec;
+
+    // Test a special time:
+    if (testspecialtimeOFF == 1) {
+      // Serial.println("Special time test active in Offline Mode: " + String(test_hourOFF) + ":" + String(test_minuteOFF) + ":" + String(test_secondOFF));
+      iHour = test_hourOFF;
+      iMinute = test_minuteOFF;
+      iSecond = test_secondOFF;
+    }
+
+    ESPUI.print(statusTimeFromDevice, String(iHour) + ":" + String(iMinute) + ":" + String(iSecond));  // Update GUI: Time from device
+    if (iHourOffset >= 0) {
+      // Serial.println("iHour OLD: " + String(iHour));
+      // Serial.println("iHour + Offset: " + String(iHourOffset));  // Set stored hour offset to received hour
+      iHour = iHour + iHourOffset;
+      // Serial.println("iHour NEW: " + String(iHour));
+    }
+    if ((iHourOffset <= -1)) {
+      // Serial.println("iHour OLD: " + String(iHour));
+      // Serial.println("iHour - Offset: " + String(iHourOffset));
+      iHour = iHourOffset + iHour;
+      // Serial.println("iHour NEW: " + String(iHour));
+    }
+    int xHour = iHour;
+    if (xHour >= 24) xHour = xHour - 24;                                                                 // Mid night corrections because of offset calculation
+    if (xHour < 0) xHour = xHour + 24;                                                                   // Mid night corrections because of offset calculation
+    ESPUI.print(statusTimeSetOffline, String(xHour) + ":" + String(iMinute) + ":" + String(iSecond));    // Update GUI: Calculated time with offset for negative offset
+    if (debugtexts == 1) Serial.println(String(xHour) + ":" + String(iMinute) + ":" + String(iSecond));  // Test output
+    rtc.setTime(iSecond, iMinute, xHour, 1, 1, 2024);                                                    // Set time on device RTC: (ss, mm, hh, DD, MM, YYYY) --> Date not used yet
+    checkforNightMode();                                                                                 // Night Mode check
+    updatenow = true;
+    updatedevice = true;
+  }
+  delay(1000);
+}
+
+
+// ###########################################################################################################################################
+// # GUI: Check if Night Mode needs to be set depending on the time:
+// ###########################################################################################################################################
+void checkforNightMode() {
+   // Start time to int:
+  String day_time_startH = getValue(day_time_start, ':', 0);
+  String day_time_startM = getValue(day_time_start, ':', 1);
+  if (debugtexts == 1) Serial.println("day_time_start H part = " + day_time_startH);
+  if (debugtexts == 1) Serial.println("day_time_start M part = " + day_time_startM);
+  int dt_start_HM = (day_time_startH.toInt() * 100) + day_time_startM.toInt();
+  if (debugtexts == 1) Serial.println("dt_start_HM = " + String(dt_start_HM));
+  // Stop time to int:
+  String day_time_stopH = getValue(day_time_stop, ':', 0);
+  String day_time_stopM = getValue(day_time_stop, ':', 1);
+  if (debugtexts == 1) Serial.println("day_time_stop H part = " + day_time_stopH);
+  if (debugtexts == 1) Serial.println("day_time_stop M part = " + day_time_stopM);
+  int dt_stop_HM = (day_time_stopH.toInt() * 100) + day_time_stopM.toInt();
+  if (debugtexts == 1) Serial.println("dt_stop_HM = " + String(dt_stop_HM));
+  // Current time to int:
+  int now_HM = (iHour * 100) + iMinute;
+  if (debugtexts == 1) Serial.println("now_HM = " + String(now_HM));
+
+  // Check if start time is before stop time:
+  if ((dt_start_HM > dt_stop_HM) || (dt_start_HM == dt_stop_HM)) {
+    if (debugtexts == 1) Serial.println("Wrong setting! 'Day time starts' needs to be before 'Day time ends after'. Please correct values.");
+    ESPUI.updateVisibility(statusNightModeWarnID, true);  // Show warning
+    ESPUI.jsonReload();
+  } else {
+    ESPUI.updateVisibility(statusNightModeWarnID, false);  // Hide warning
+    // Day or Night time:
+    if (usenightmode == 1) {
+      if ((now_HM >= dt_start_HM) && (now_HM <= dt_stop_HM)) {
+        if (debugtexts == 1) Serial.println("Day Time");
+        statusNightModeIDtxt = "Day Time";
+        ESPUI.print(statusNightModeID, "Day time");
+        if ((iHour == 0) && (day_time_startH.toInt() == 23)) {  // Special function if day_time_stop set to 23 and time is 24, so 0...
+          statusNightModeIDtxt = "Night time";
+          ESPUI.print(statusNightModeID, "Night time");
+        }
+      } else {
+        if (debugtexts == 1) Serial.println("Night Time");
+        statusNightModeIDtxt = "Night time";
+        ESPUI.print(statusNightModeID, "Night time");
+      }
+    } else {
+      ESPUI.print(statusNightModeID, "Night mode not used");
+    }
+  }
+}
+
+
+// ###########################################################################################################################################
 // # Update the display / time on it:
 // ###########################################################################################################################################
 void update_display() {
@@ -1359,10 +1738,10 @@ void update_display() {
     usenightmode = 0;
     uint32_t c = strip.Color(redVal_time, greenVal_time, blueVal_time);
     int TextWait = 500;
-    showtext("T", TextWait, c);
-    showtext("E", TextWait, c);
-    showtext("S", TextWait, c);
-    showtext("T", TextWait, c);
+    showtext('T', TextWait, c);
+    showtext('E', TextWait, c);
+    showtext('S', TextWait, c);
+    showtext('T', TextWait, c);
     for (int i = 1; i <= 12; i++) {  // 12 hours only:
       show_time(i, 0);
       delay(3000);
@@ -1406,34 +1785,44 @@ void show_time(int hours, int minutes) {
   // Show current time of display update:
   if (debugtexts == 1) Serial.println("Update display now: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
 
-  // Night/Day mode intensity setting:
+  // Set LED intensity + DAY/NIGHT MDOE:
+  // ##################
+  // Start time to int:
+  String day_time_startH = getValue(day_time_start, ':', 0);
+  String day_time_startM = getValue(day_time_start, ':', 1);
+  int dt_start_HM = (day_time_startH.toInt() * 100) + day_time_startM.toInt();
+  // Stop time to int:
+  String day_time_stopH = getValue(day_time_stop, ':', 0);
+  String day_time_stopM = getValue(day_time_stop, ':', 1);
+  int dt_stop_HM = (day_time_stopH.toInt() * 100) + day_time_stopM.toInt();
+  // Current time to int:
+  int now_HM = (iHour * 100) + iMinute;
+
+  // Set intensity:
   if ((usenightmode == 1) && (set_web_intensity == 0)) {
-    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
+    if ((now_HM >= dt_start_HM) && (now_HM <= dt_stop_HM)) {
       intensity = intensity_day;
-      if ((iHour == 0) && (day_time_stop == 23)) intensity = intensity_night;  // Special function if day_time_stop set to 23 and time is 24, so 0...
+      if (statusNightModeIDtxt != "Day time") {
+        statusNightModeIDtxt = "Day time";
+        ESPUI.print(statusNightModeID, "Day time");
+      }
+      if ((iHour == 0) && (day_time_startH.toInt() == 23)) {  // Special function if day_time_stop set to 23 and time is 24, so 0...
+        intensity = intensity_night;
+        if (statusNightModeIDtxt != "Night time") {
+          statusNightModeIDtxt = "Night time";
+          ESPUI.print(statusNightModeID, "Night time");
+        }
+      }
     } else {
       intensity = intensity_night;
-    }
-    if (testDayNightmode == 1) {  // Test day/night times function:
-      Serial.println("############################################################################################");
-      Serial.println("Current time day/night test: " + String(hours) + ":" + String(minutes) + ":" + String(iSecond));
-      Serial.println("Current settings: day_time_start: " + String(day_time_start) + " day_time_stop: " + String(day_time_stop));
-      for (int i = 0; i < 24; i++) {
-        String daynightvar = "-";
-        if ((i >= day_time_start) && (i <= day_time_stop)) {
-          daynightvar = "Day time";
-          if ((i == 0) && (day_time_stop == 23)) daynightvar = "Night time";
-        } else {
-          daynightvar = "Night time";
-        }
-        Serial.println("Current hour: " + String(i) + " --> " + daynightvar);
+      if (statusNightModeIDtxt != "Night time") {
+        statusNightModeIDtxt = "Night time";
+        ESPUI.print(statusNightModeID, "Night time");
       }
-      testDayNightmode = 0;  // Show the list 1x only
-      Serial.println("############################################################################################");
     }
-  } else {  // Control intensity by WordClock settings or via HTML command:
+  } else {
     if (set_web_intensity == 0) intensity = intensity_day;
-    if (set_web_intensity == 1) intensity = 0;
+    if (set_web_intensity == 1) intensity = intensity_web;
   }
   strip.setBrightness(intensity);
 
@@ -2944,7 +3333,7 @@ void show_time(int hours, int minutes) {
         }
       case 7:
         {
-          setLEDcol(99, 103, colorRGB);   // SIWEN
+          setLEDcol(99, 103, colorRGB);  // SIWEN
           if (testPrintTimeTexts == 1) Serial.print("SIWEN ");
           break;
         }
@@ -2956,7 +3345,7 @@ void show_time(int hours, int minutes) {
         }
       case 9:
         {
-          setLEDcol(96, 99, colorRGB);    // NÉNG
+          setLEDcol(96, 99, colorRGB);  // NÉNG
           if (testPrintTimeTexts == 1) Serial.print("NÉNG ");
           break;
         }
@@ -3435,6 +3824,7 @@ void setTimezone(String timezone) {
 void initTime(String timezone) {
   Serial.println("Setting up time from: " + NTPserver);
 
+  // Flash TIME LEDs 3x blue:
   for (int i = 0; i < 3; i++) {
     ClearDisplay();
     strip.show();
@@ -3488,8 +3878,8 @@ void initTime(String timezone) {
       setLEDcol(5, 8, strip.Color(0, 0, 255));  // ZEID
     }
 
-    if (langLEDlayout == 10) {                    // LTZ:
-      setLEDcol(1, 4, strip.Color(0, 0, 255));    // ZÄIT
+    if (langLEDlayout == 10) {                  // LTZ:
+      setLEDcol(1, 4, strip.Color(0, 0, 255));  // ZÄIT
     }
     strip.show();
     delay(500);
@@ -3551,8 +3941,8 @@ void initTime(String timezone) {
       setLEDcol(5, 8, strip.Color(255, 0, 0));  // ZEID
     }
 
-    if (langLEDlayout == 10) {                    // LTZ:
-      setLEDcol(1, 4, strip.Color(255, 0, 0));    // ZÄIT
+    if (langLEDlayout == 10) {                  // LTZ:
+      setLEDcol(1, 4, strip.Color(255, 0, 0));  // ZÄIT
     }
 
     strip.show();
@@ -3615,8 +4005,8 @@ void initTime(String timezone) {
     setLEDcol(5, 8, strip.Color(0, 255, 0));  // ZEID
   }
 
-  if (langLEDlayout == 10) {                    // LTZ:
-    setLEDcol(1, 4, strip.Color(255, 0, 0));    // ZÄIT
+  if (langLEDlayout == 10) {                  // LTZ:
+    setLEDcol(1, 4, strip.Color(255, 0, 0));  // ZÄIT
   }
 
   strip.show();
@@ -3663,151 +4053,6 @@ void setTime(int yr, int month, int mday, int hr, int minute, int sec, int isDst
   settimeofday(&now, NULL);
 }
 // ###########################################################################################################################################
-
-
-// ###########################################################################################################################################
-// # GUI: Convert hex color value to RGB int values - TIME:
-// ###########################################################################################################################################
-void getRGBTIME(String hexvalue) {
-  updatedevice = false;
-  delay(1000);
-  hexvalue.toUpperCase();
-  char c[7];
-  hexvalue.toCharArray(c, 8);
-  int red = hexcolorToInt(c[1], c[2]);
-  int green = hexcolorToInt(c[3], c[4]);
-  int blue = hexcolorToInt(c[5], c[6]);
-  redVal_time = red;
-  greenVal_time = green;
-  blueVal_time = blue;
-  changedvalues = true;
-  updatedevice = true;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Convert hex color value to RGB int values - BACKGROUND:
-// ###########################################################################################################################################
-void getRGBBACK(String hexvalue) {
-  updatedevice = false;
-  delay(1000);
-  hexvalue.toUpperCase();
-  char c[7];
-  hexvalue.toCharArray(c, 8);
-  int red = hexcolorToInt(c[1], c[2]);
-  int green = hexcolorToInt(c[3], c[4]);
-  int blue = hexcolorToInt(c[5], c[6]);
-  redVal_back = red;
-  greenVal_back = green;
-  blueVal_back = blue;
-  changedvalues = true;
-  updatedevice = true;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Convert hex color value to RGB int values - helper function:
-// ###########################################################################################################################################
-int hexcolorToInt(char upper, char lower) {
-  int uVal = (int)upper;
-  int lVal = (int)lower;
-  uVal = uVal > 64 ? uVal - 55 : uVal - 48;
-  uVal = uVal << 4;
-  lVal = lVal > 64 ? lVal - 55 : lVal - 48;
-  return uVal + lVal;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Color change for time color:
-// ###########################################################################################################################################
-#define SLIDER_UPDATE_TIME 150  // Wait at least 100 ms before allowing another slider update --> Bug fix for color slider crashing ESP32
-void colCallTIME(Control* sender, int type) {
-  static unsigned long last_slider_update = 0;  // Track the time of the last slider update
-  if ((millis() - last_slider_update >= SLIDER_UPDATE_TIME)) {
-    getRGBTIME(sender->value);
-    last_slider_update = millis();
-    if (debugtexts == 1) {
-      Serial.println(type);
-      Serial.println(sender->value);
-    }
-  }
-  return;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Color change for background color:
-// ###########################################################################################################################################
-#define SLIDER_UPDATE_BACK 150  // Wait at least 100 ms before allowing another slider update --> Bug fix for color slider crashing ESP32
-void colCallBACK(Control* sender, int type) {
-  static unsigned long last_slider_update = 0;  // Track the time of the last slider update
-  if ((type == 10) && (millis() - last_slider_update >= SLIDER_UPDATE_BACK)) {
-    getRGBBACK(sender->value);
-    last_slider_update = millis();
-    if (debugtexts == 1) {
-      Serial.println(type);
-      Serial.println(sender->value);
-    }
-  }
-  return;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Slider change for LED intensity: DAY
-// ###########################################################################################################################################
-void sliderBrightnessDay(Control* sender, int type) {
-  updatedevice = false;
-  delay(1000);
-  intensity_day = sender->value.toInt();
-  changedvalues = true;
-  updatedevice = true;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Slider change for LED intensity: NIGHT
-// ###########################################################################################################################################
-void sliderBrightnessNight(Control* sender, int type) {
-  updatedevice = false;
-  delay(1000);
-  intensity_night = sender->value.toInt();
-  changedvalues = true;
-  updatedevice = true;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Time Day Mode Start
-// ###########################################################################################################################################
-void call_day_time_start(Control* sender, int type) {
-  updatedevice = false;
-  delay(1000);
-  day_time_start = sender->value.toInt();
-  changedvalues = true;
-  updatedevice = true;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Time Day Mode Stop
-// ###########################################################################################################################################
-void call_day_time_stop(Control* sender, int type) {
-  updatedevice = false;
-  delay(1000);
-  day_time_stop = sender->value.toInt();
-  changedvalues = true;
-  updatedevice = true;
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Convert IP-address value to string:
-// ###########################################################################################################################################
-String IpAddress2String(const IPAddress& ipAddress) {
-  return String(ipAddress[0]) + String(".") + String(ipAddress[1]) + String(".") + String(ipAddress[2]) + String(".") + String(ipAddress[3]);
-}
 
 
 // ###########################################################################################################################################
@@ -3898,127 +4143,15 @@ void callStartText() {
   Serial.println("Show 'WordClock' startup text...");
   uint32_t c = strip.Color(redVal_time, greenVal_time, blueVal_time);
   int TextWait = 500;
-  showtext("W", TextWait, c);
-  showtext("o", TextWait, c);
-  showtext("r", TextWait, c);
-  showtext("d", TextWait, c);
-  showtext("C", TextWait, c);
-  showtext("l", TextWait, c);
-  showtext("o", TextWait, c);
-  showtext("c", TextWait, c);
-  showtext("k", TextWait, c);
-}
-
-
-// ###########################################################################################################################################
-// # Text output function:
-// ###########################################################################################################################################
-void showtext(String letter, int wait, uint32_t c) {
-  ClearDisplay();
-
-  int myArray[50];
-  memset(myArray, 0, sizeof(myArray));
-
-  if (letter == "W") {
-    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 151, 136, 135, 152, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "o") {
-    int myArray2[] = { 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 102, 121, 120, 103, 104, 119, 118, 105 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "r") {
-    int myArray2[] = { 154, 133, 122, 101, 102, 121, 120, 103, 104, 119, 118, 105, 106, 117, 138, 149, 170, 181 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "d") {
-    int myArray2[] = { 102, 121, 120, 103, 104, 119, 118, 105, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "C") {
-    int myArray2[] = { 58, 37, 57, 38, 39, 56, 40, 55, 41, 54, 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "l") {
-    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181 };  // , 169, 182, 183, 168
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "c") {
-    int myArray2[] = { 122, 101, 102, 121, 120, 103, 104, 119, 118, 105, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "k") {
-    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 105, 118, 104, 119, 71, 88, 37, 58, 134, 153, 165, 186 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "S") {
-    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 133, 154, 165, 166, 167, 168, 169, 170, 181, 182, 183, 184, 185, 186 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "E") {
-    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 165, 166, 167, 168, 169, 170, 181, 182, 183, 184, 185, 186 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "T") {
-    int myArray2[] = { 37, 38, 39, 40, 41, 42, 43, 52, 53, 54, 55, 56, 57, 58, 72, 87, 104, 119, 136, 151, 168, 183 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "I") {
-    int myArray2[] = { 40, 55, 72, 87, 104, 119, 136, 151, 168, 183 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "F") {
-    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 170, 181 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "U") {
-    int myArray2[] = { 42, 53, 74, 85, 106, 117, 138, 149, 170, 181, 169, 182, 183, 168, 167, 184, 166, 185, 186, 165, 154, 133, 122, 101, 90, 69, 58, 37 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "P") {
-    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 69, 90, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 170, 181 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "D") {
-    int myArray2[] = { 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 74, 85, 69, 90, 101, 106, 117, 122, 138, 149, 170, 181, 133, 154, 169, 182, 183, 168, 167, 184, 166, 185 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == "A") {
-    int myArray2[] = { 37, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 74, 85, 69, 90, 101, 102, 103, 104, 105, 106, 117, 118, 119, 120, 121, 122, 138, 149, 170, 181, 133, 154, 165, 186 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-  }
-
-  if (letter == " ") {
-    int myArray2[] = { 255 };
-    memcpy(myArray, myArray2, sizeof(myArray2));
-    c = strip.Color(0, 0, 0);
-  }
-
-  for (int element : myArray) {
-    if (element != 0) {
-      strip.setPixelColor(element, c);
-    }
-  }
-
-  strip.show();
-  delay(wait);
-  ClearDisplay();
+  showtext('W', TextWait, c);
+  showtext('O', TextWait, c);
+  showtext('R', TextWait, c);
+  showtext('D', TextWait, c);
+  showtext('C', TextWait, c);
+  showtext('L', TextWait, c);
+  showtext('O', TextWait, c);
+  showtext('C', TextWait, c);
+  showtext('K', TextWait, c);
 }
 
 
@@ -4076,8 +4209,8 @@ void SetWLAN(uint32_t color) {
     setLEDcol(10, 13, color);  // WIFI
   }
 
-  if (langLEDlayout == 10) {   // LTZ:
-    setLEDcol(5, 8, color);    // WIFI
+  if (langLEDlayout == 10) {  // LTZ:
+    setLEDcol(5, 8, color);   // WIFI
   }
 
   strip.show();
@@ -4181,6 +4314,11 @@ const char config_html[] PROGMEM = R"rawliteral(
     alert("WiFi password must be set");
     return false;
   }
+  var x = document.forms["myForm"]["setlanguage"].value;
+  if (x == "99") {
+    alert("Language layout must be set");
+    return false;
+  }
   } 
   //-->
   </script>
@@ -4228,7 +4366,8 @@ const char config_html[] PROGMEM = R"rawliteral(
     <input type="text" id="myPW" name="myPW" value="" style="width: 200px;" /><br/><br/>
     <label for="setlanguage">Select your language layout:</label><br/>
     <select id="setlanguage" name="setlanguage" style="width: 200px;">
-    <option value=0 selected>GERMAN</option>
+    <option value=99 selected>Select your language layout</option>
+    <option value=0>GERMAN</option>
     <option value=1>ENGLISH</option>
     <option value=2>DUTCH</option>
     <option value=3>SWEDISH</option>
@@ -4427,17 +4566,17 @@ void WIFI_SETUP() {
       Serial.println("Show SET WIFI...");
       uint32_t c = strip.Color(0, 255, 255);
       int TextWait = 500;
-      showtext("S", TextWait, c);
-      showtext("E", TextWait, c);
-      showtext("T", TextWait, c);
-      showtext(" ", TextWait, c);
-      showtext("W", TextWait, c);
-      showtext("I", TextWait, c);
-      showtext("F", TextWait, c);
-      showtext("I", TextWait, c);
-      showtext(" ", TextWait, c);
-      SetWLAN(strip.Color(0, 255, 255));
+      showtext('S', TextWait, c);
+      showtext('E', TextWait, c);
+      showtext('T', TextWait, c);
+      showtext(' ', TextWait, c);
+      showtext('W', TextWait, c);
+      showtext('I', TextWait, c);
+      showtext('F', TextWait, c);
+      showtext('I', TextWait, c);
+      showtext(' ', TextWait, c);
       CaptivePotalSetup();
+      SetWLAN(strip.Color(0, 255, 255));
     } else {
       Serial.println("Try to connect to found WiFi configuration: ");
       WiFi.disconnect();
@@ -4517,8 +4656,9 @@ const char otaserverIndex[] PROGMEM = R"=====(
   <body>
     <form method='POST' action='/update' enctype='multipart/form-data'>
       <center><b><h1>WordClock software update</h1></b>
-      <h2>Please select the in the Arduino IDE > "Sketch" ><br/>"Export Compiled Binary (Alt+Ctrl+S)"<br/>to generate the required "Code.ino.bin" file.<br/>
-      Use the "Update" button 1x to start the update.<br/><br/>WordClock will restart automatically.</h2><br/>
+      <h2>Please select the in the Arduino IDE > "Sketch" ><br/>"Export Compiled Binary (Alt+Ctrl+S)"<br/>to generate the required "Code.ino.bin" file.<br/><br/>
+      Select the "Code.ino.bin" file with the "Search" button.<br/><br/>
+      Use the "Update" button to start the update.<br/><br/>WordClock will restart automatically.</h2><br/>
       <input type='file' name='update'>       <input type='submit' value='Update'>
      </center></form></body>
   </html>
@@ -4836,214 +4976,285 @@ void ShowOfflineIPaddress() {
 }
 
 
+
 // ###########################################################################################################################################
-// # GUI: Use Offline Mode switch:
+// # Split String into an Array (DayNightModeFunction)
 // ###########################################################################################################################################
-void switchOffline(Control* sender, int value) {
-  updatedevice = false;
-  Serial.println("Offline Mode change: Restart request");
-  switch (value) {
-    case S_ACTIVE:
-      UseOnlineMode = 1;  // Online
-      useshowip = useshowip_default;
-      break;
-    case S_INACTIVE:
-      UseOnlineMode = 0;  // Offline
-      useshowip = 1;
-      break;
+String getValue(String data, char separator, int index) {
+  int found = 0;
+  int strIndex[] = { 0, -1 };
+  int maxIndex = data.length() - 1;
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
+      found++;
+      strIndex[0] = strIndex[1] + 1;
+      strIndex[1] = (i == maxIndex) ? i + 1 : i;
+    }
   }
-  changedvalues = true;
-  setFlashValues();  // Save values!
-  ClearDisplay();
-  ResetTextLEDs(strip.Color(0, 255, 0));
-  strip.show();
-  Serial.println("Offline Mode change: Perform restart now");
-  delay(1000);
-  ESP.restart();
+  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
 
 // ###########################################################################################################################################
-// # GUI: Show or hide the Operation Mode hints:
+// # Text output function: (modified and original by Dreso)
 // ###########################################################################################################################################
-void switchOMhints(Control* sender, int value) {
-  updatedevice = false;
-  switch (value) {
-    case S_ACTIVE:
-      showOMhints = 1;  // Show
-      ESPUI.updateVisibility(OfflineModeHint1, true);
-      ESPUI.updateVisibility(OfflineModeHint2, true);
-      ESPUI.updateVisibility(OfflineModeHint3, true);
-      ESPUI.jsonReload();
-      break;
-    case S_INACTIVE:
-      showOMhints = 0;  // Hide
-      ESPUI.updateVisibility(OfflineModeHint1, false);
-      ESPUI.updateVisibility(OfflineModeHint2, false);
-      ESPUI.updateVisibility(OfflineModeHint3, false);
-      break;
-  }
-  changedvalues = true;
-  updatedevice = true;
+// # Matrix treated with coordinates from 1,1 (top,left) to 16,16 (bottom, right)
+// # each element with two Leds aligned above each other  (16x16 Matrix treated as 8x16 Matrix)
+// #  __________________       ______________
+// # | 1,1 | 1,2 | 1,3 | .... | 1,15 | 1,16 |
+// # |-----|-----|-----|       -------------|
+// # | 2,1 | 2,2 |...................| 2,16 |
+// # |-----|-----|-----|       -------------|
+// # | 3,1 |-----|
+// # |-----|-----|-----|       -------------|
+// # |...................
+// # |-----|-----|-----|       -------------|
+// # | 8,1 | 8,2 | 8,3 | ...  | 8,15 | 8,16 |
+// # |_____|_____|______     _|______|______|
+#define MAXROWS 8
+#define MAXCOLUMS 16
+
+
+// ##############################################################################################
+// #Duocolor Pixel
+// ##############################################################################################
+void DrawPixelX(int row, int colum, uint32_t c1, uint32_t c2) {
+  if (row > 0) row--;                                                      // internal index begins with 0 and external with 1
+  if (colum > 0) colum--;                                                  // internal index begins with 0
+  strip.setPixelColor(row * 2 * MAXCOLUMS + (MAXCOLUMS - 1 - colum), c1);  // upper led
+  strip.setPixelColor(row * 2 * MAXCOLUMS + (MAXCOLUMS + colum), c2);      // lower led // (2023 WordClock)
 }
 
 
-// ###########################################################################################################################################
-// # GUI: Manual Offline Mode offset hour setting
-// ###########################################################################################################################################
-void SetOfflineHourOffset(Control* sender, int type) {
-  updatedevice = false;
-  delay(1000);
-  iHourOffset = sender->value.toInt();
-  changedvalues = true;
-  updatedevice = true;
+// ##############################################################################################
+// # Monocolor Line Drawing
+// ##############################################################################################
+void DrawLine(int startrow, int startcolum, int endrow, int endcolum, uint32_t c) {
+  DrawLineX(startrow, startcolum, endrow, endcolum, c, c);  //same color for both Leds
 }
 
 
-// ###########################################################################################################################################
-// # GUI: Time Zone selection:
-// ###########################################################################################################################################
-void SetMyTimeZone(Control* sender, int type) {
-  updatedevice = false;
-  delay(1000);
-  myTimeZone = sender->value;
-  changedvalues = true;
-  updatedevice = true;
-  setFlashValues();  // Save values!
-  ClearDisplay();
-  ResetTextLEDs(strip.Color(0, 255, 0));
-  strip.show();
-  Serial.println("Time Zone change: Perform restart now");
-  delay(1000);
-  ESP.restart();
+// ##############################################################################################
+// # Monocolor Pixel
+// ##############################################################################################
+void DrawPixel(int row, int colum, uint32_t c) {
+  DrawPixelX(row, colum, c, c);  //same color for both Leds
 }
 
 
-// ###########################################################################################################################################
-// # GUI: Time Server selection:
-// ###########################################################################################################################################
-void SetMyTimeServer(Control* sender, int type) {
-  updatedevice = false;
-  delay(1000);
-  if (sender->value == "Your local router") {
-    myTimeServer = IpAddress2String(WiFi.gatewayIP());
+// ##############################################################################################
+// # Draw Line with possible different colours on the two leds per element
+// #
+// # Diagonal Lines are also possible
+// # Boundaries are not checked in this routine
+// # Endpoints can also be smaller in number than the start
+// ##############################################################################################
+void DrawLineX(int startrow, int startcolum, int endrow, int endcolum, uint32_t c1, uint32_t c2) {
+  int dx, dy;
+  if (endcolum > startcolum) {
+    dx = 1;
   } else {
-    myTimeServer = sender->value;
-  }
-  changedvalues = true;
-  updatedevice = true;
-  setFlashValues();  // Save values!
-  ClearDisplay();
-  ResetTextLEDs(strip.Color(0, 255, 0));
-  strip.show();
-  Serial.println("Time Server change: Perform restart now");
-  Serial.println("Time Server set to: " + String(sender->value));
-  delay(1000);
-  ESP.restart();
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Manual time setting from device (PC, tablet, smartphone) as long as the Offline Mode web portal is opened:
-// ###########################################################################################################################################
-void getTimeCallback(Control* sender, int type) {
-  if (type == B_UP) {
-    ESPUI.updateTime(timeId);
-  }
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Manual time setting from device (PC, tablet, smartphone):
-// ###########################################################################################################################################
-void timeCallback(Control* sender, int type) {
-  updatedevice = false;
-  if (type == TM_VALUE) {
-    // Serial.print("Auto Time by device: ");
-    // Serial.println(sender->value);
-    // ESPUI.print(statusTimeFromDevice, String(sender->value));
-
-    String calTimestamp = String(sender->value);
-    struct tm tm;
-    // Test String to get all values:
-    // Serial.println("Parsing " + calTimestamp);  // 2024-01-04T18:33:37.294Z
-    // #######################################################
-    // for (int i = 0; i <= 25; i++) {
-    //   Serial.print(i);
-    //   Serial.print(" = ");
-    //   Serial.println(calTimestamp.substring(i).toInt());
-    // }
-    // #######################################################
-
-    // Date not used yet:
-    // String year = calTimestamp.substring(0, 4);
-    // String month = calTimestamp.substring(4, 6);
-    // if (month.startsWith("0")) {
-    //   month = month.substring(1);
-    // }
-    // String day = calTimestamp.substring(6, 8);
-    // if (day.startsWith("0")) {
-    //   month = day.substring(1);
-    // }
-    // tm.tm_year = year.toInt() - 1900;
-    // tm.tm_mon = month.toInt() - 1;
-    // tm.tm_mday = day.toInt();
-    tm.tm_hour = calTimestamp.substring(11).toInt();  // Hour from string
-    tm.tm_min = calTimestamp.substring(14).toInt();   // Minute from string
-    tm.tm_sec = calTimestamp.substring(17).toInt();   // Second from string
-    iHour = tm.tm_hour;
-    iMinute = tm.tm_min;
-    iSecond = tm.tm_sec;
-
-    // Test a special time:
-    if (testspecialtimeOFF == 1) {
-      // Serial.println("Special time test active in Offline Mode: " + String(test_hourOFF) + ":" + String(test_minuteOFF) + ":" + String(test_secondOFF));
-      iHour = test_hourOFF;
-      iMinute = test_minuteOFF;
-      iSecond = test_secondOFF;
-    }
-
-    ESPUI.print(statusTimeFromDevice, String(iHour) + ":" + String(iMinute) + ":" + String(iSecond));  // Update GUI: Time from device
-    if (iHourOffset >= 0) {
-      // Serial.println("iHour OLD: " + String(iHour));
-      // Serial.println("iHour + Offset: " + String(iHourOffset));  // Set stored hour offset to received hour
-      iHour = iHour + iHourOffset;
-      // Serial.println("iHour NEW: " + String(iHour));
-    }
-    if ((iHourOffset <= -1)) {
-      // Serial.println("iHour OLD: " + String(iHour));
-      // Serial.println("iHour - Offset: " + String(iHourOffset));
-      iHour = iHourOffset + iHour;
-      // Serial.println("iHour NEW: " + String(iHour));
-    }
-    int xHour = iHour;
-    if (xHour >= 24) xHour = xHour - 24;                                                                 // Mid night corrections because of offset calculation
-    if (xHour < 0) xHour = xHour + 24;                                                                   // Mid night corrections because of offset calculation
-    ESPUI.print(statusTimeSetOffline, String(xHour) + ":" + String(iMinute) + ":" + String(iSecond));    // Update GUI: Calculated time with offset for negative offset
-    if (debugtexts == 1) Serial.println(String(xHour) + ":" + String(iMinute) + ":" + String(iSecond));  // Test output
-    rtc.setTime(iSecond, iMinute, xHour, 1, 1, 2024);                                                    // Set time on device RTC: (ss, mm, hh, DD, MM, YYYY) --> Date not used yet
-    checkforNightMode();                                                                                 // Night Mode check
-    updatenow = true;
-    updatedevice = true;
-  }
-  delay(1000);
-}
-
-
-// ###########################################################################################################################################
-// # GUI: Check if Night Mode needs to be set depending on the time:
-// ###########################################################################################################################################
-void checkforNightMode() {
-  if (usenightmode == 1) {
-    if ((iHour >= day_time_start) && (iHour <= day_time_stop)) {
-      ESPUI.print(statusNightModeID, "Day time");
-      if ((iHour == 0) && (day_time_stop == 23)) ESPUI.print(statusNightModeID, "Night time");  // Special function if day_time_stop set to 23 and time is 24, so 0...
+    if (endcolum < startcolum) {
+      dx = -1;
     } else {
-      ESPUI.print(statusNightModeID, "Night time");
+      dx = 0;
     }
-  } else {
-    ESPUI.print(statusNightModeID, "Night mode not used");
   }
+  if (endrow > startrow) {
+    dy = 1;
+  } else {
+    if (endrow < startrow) {
+      dy = -1;
+    } else {
+      dy = 0;
+    }
+  }
+
+  int actrow = startrow, actcolum = startcolum;
+  bool bDone = false;
+  while (!bDone) {
+    DrawPixelX(actrow, actcolum, c1, c2);
+    if (dx == 0 && dy == 0) {
+      bDone = true;
+    }
+    actrow += dy;
+    actcolum += dx;
+    if (actrow == endrow) {
+      dy = 0;
+    }
+    if (actcolum == endcolum) {
+      dx = 0;
+    }
+  }
+}
+
+
+// ###########################################################################################################################################
+// # Text output function:
+// ###########################################################################################################################################
+void showtext(char letter, int wait, uint32_t c) {
+  ClearDisplay();
+  uint32_t c2;
+  letter = toupper(letter);  // only uppercase possible at the moment
+
+  if (letter == 'A') {
+    DrawLine(3, 6, 6, 6, c);
+    DrawLine(3, 11, 6, 11, c);
+    DrawLine(2, 7, 2, 10, c);
+    DrawLine(4, 6, 4, 11, c);
+  }
+  if (letter == 'B') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(2, 7, 2, 10, c);
+    DrawPixel(3, 11, c);
+    DrawLine(4, 7, 4, 10, c);
+    DrawPixel(5, 11, c);
+    DrawLine(6, 7, 6, 10, c);
+  }
+  if (letter == 'C') {
+    DrawLine(2, 7, 2, 11, c);
+    DrawLine(3, 6, 5, 6, c);
+    DrawLine(6, 7, 6, 11, c);
+  }
+  if (letter == 'D') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(3, 11, 5, 11, c);
+    DrawLine(2, 7, 2, 10, c);
+    DrawLine(6, 7, 6, 10, c);
+  }
+  if (letter == 'E') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(2, 6, 2, 11, c);
+    DrawLine(4, 6, 4, 10, c);
+    DrawLine(6, 6, 6, 11, c);
+  }
+  if (letter == 'F') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(2, 7, 2, 11, c);
+    DrawLine(4, 7, 4, 10, c);
+  }
+  if (letter == 'G') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(4, 11, 6, 11, c);
+    DrawLine(2, 6, 2, 11, c);
+    DrawLine(4, 9, 4, 11, c);
+    DrawLine(6, 6, 6, 11, c);
+  }
+  if (letter == 'H') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(2, 11, 6, 11, c);
+    DrawLine(4, 6, 4, 11, c);
+  }
+  if (letter == 'I') {
+    DrawLine(2, 7, 2, 9, c);
+    DrawLine(3, 8, 5, 8, c);
+    DrawLine(6, 7, 6, 9, c);
+  }
+  if (letter == 'J') {
+    DrawLine(2, 6, 2, 10, c);
+    DrawLine(3, 10, 5, 10, c);
+    DrawLine(6, 7, 6, 9, c);
+    DrawPixel(5, 6, c);
+  }
+  if (letter == 'K') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(4, 7, 4, 9, c);
+    DrawLine(4, 9, 2, 11, c);
+    DrawLine(4, 9, 6, 11, c);
+  }
+  if (letter == 'L') {
+    //"L"
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(6, 6, 6, 11, c);
+  }
+  if (letter == 'M') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(2, 11, 6, 11, c);
+    DrawPixel(3, 7, c);
+    DrawLine(4, 8, 4, 9, c);
+    DrawLine(3, 10, 3, 10, c);
+  }
+  if (letter == 'N') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(2, 11, 6, 11, c);
+    DrawLine(3, 7, 6, 10, c);
+  }
+  if (letter == 'O') {
+    DrawLine(3, 6, 5, 6, c);
+    DrawLine(3, 11, 5, 11, c);
+    DrawLine(2, 7, 2, 10, c);
+    DrawLine(6, 7, 6, 10, c);
+  }
+  if (letter == 'P') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(3, 11, 3, 11, c);
+    DrawLine(2, 6, 2, 10, c);
+    DrawLine(4, 6, 4, 10, c);
+  }
+  if (letter == 'Q') {
+    DrawLine(3, 6, 5, 6, c);
+    DrawLine(3, 11, 5, 11, c);
+    DrawLine(2, 7, 2, 10, c);
+    DrawLine(6, 7, 6, 10, c);
+    DrawLine(5, 10, 6, 11, c);
+  }
+  if (letter == 'R') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(3, 11, 4, 11, c);
+    DrawLine(2, 6, 2, 10, c);
+    DrawLine(4, 6, 4, 11, c);
+    DrawLine(5, 10, 6, 11, c);
+  }
+  if (letter == 'S') {
+    DrawLine(3, 6, 3, 6, c);
+    DrawLine(5, 11, 5, 11, c);
+    DrawLine(2, 7, 2, 11, c);
+    DrawLine(4, 7, 4, 10, c);
+    DrawLine(6, 6, 6, 10, c);
+  }
+  if (letter == 'T') {
+    DrawLine(2, 6, 2, 10, c);
+    DrawLine(3, 8, 6, 8, c);
+  }
+  if (letter == 'U') {
+    DrawLine(2, 6, 5, 6, c);
+    DrawLine(2, 11, 5, 11, c);
+    DrawLine(6, 7, 6, 10, c);
+  }
+  if (letter == 'V') {
+    DrawLine(2, 6, 3, 6, c);
+    DrawLine(2, 11, 3, 11, c);
+    DrawLine(4, 6, 6, 8, c);
+    DrawLine(6, 9, 4, 11, c);
+  }
+  if (letter == 'W') {
+    DrawLine(2, 6, 6, 6, c);
+    DrawLine(2, 11, 6, 11, c);
+    DrawLine(5, 7, 4, 8, c);
+    DrawLine(4, 9, 5, 10, c);
+  }
+  if (letter == 'X') {
+    DrawLine(2, 6, 4, 8, c);
+    DrawLine(4, 9, 2, 11, c);
+    DrawLine(6, 6, 4, 8, c);
+    DrawLine(4, 9, 6, 11, c);
+  }
+  if (letter == 'Y') {
+    DrawLine(2, 6, 4, 8, c);
+    DrawLine(4, 8, 2, 10, c);
+    DrawLine(5, 8, 6, 8, c);
+  }
+  if (letter == 'Z') {
+    DrawLine(2, 6, 2, 10, c);
+    DrawLine(3, 9, 5, 7, c);
+    DrawLine(6, 6, 6, 10, c);
+  }
+
+  if (letter == ' ') {
+    // already cleareed at top
+  }
+  strip.show();
+  delay(wait);
 }
 
 
