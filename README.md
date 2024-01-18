@@ -17,6 +17,8 @@ The designs are available in:
 - Bavarian
 - Luxemburgish 
 
+This WordClock can be used in "Online Mode" with WiFi usage or in "Offline Mode" without the need of a local WiFi. In both modes you will be able to use an internal configuration portal to configure your WordClock. See pictures below. =)
+
 Happy printing =)
 
 
@@ -64,7 +66,7 @@ WordClock in Online Mode:
 <img src="./Images/IMG_3269.jpeg">
 
 WordClock in Offline Mode:
-<img src="./Images/IMG_3271.jpeg">
-<img src="./Images/IMG_3272.jpeg">
+<img src="./Images/IMG_3271.png">
+<img src="./Images/IMG_3272.png">
 
 <hr>
