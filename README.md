@@ -66,7 +66,7 @@ WordClock in Online Mode:
 <img src="./Images/IMG_3269.jpeg">
 
 WordClock in Offline Mode:
-<img src="./Images/IMG_3271.png">
-<img src="./Images/IMG_3272.png">
+<img src="./Images/IMG_3271.jpeg">
+<img src="./Images/IMG_3272.jpeg">
 
 <hr>
