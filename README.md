@@ -58,8 +58,13 @@ Images of 2023-V1 with stencil font and 2023-V2 and 2023-V3 with regular font:
 
 <img src="./Images/A0B50A9B-8A43-4066-939B-C25B38242FDF.jpeg">
 
+WordClock in Online Mode:
 <img src="./Images/IMG_3267.jpeg">
 <img src="./Images/IMG_3268.jpeg">
 <img src="./Images/IMG_3269.jpeg">
+
+WordClock in Online Mode:
+<img src="./Images/IMG_3272.jpeg">
+<img src="./Images/IMG_3273.jpeg">
 
 <hr>
