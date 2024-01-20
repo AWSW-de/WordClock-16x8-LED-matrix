@@ -4319,6 +4319,11 @@ const char config_html[] PROGMEM = R"rawliteral(
           errorParagraph.style.display = 'block'; 
           return false;
         }
+        if (document.forms["myForm"]["setlanguage"].value == "99") {
+          errorParagraph.innerHTML = "Language layout must be set. ";
+          errorParagraph.style.display = 'block'; 
+          return false;
+        }
         return true;
       }
       function disableButtonAndSubmit() {
@@ -4396,7 +4401,8 @@ const char config_html[] PROGMEM = R"rawliteral(
       <p>
         <label for="setlanguage">Select your language layout:</label><br/>
         <select id="setlanguage" name="setlanguage">
-          <option value="0" selected>GERMAN</option>
+          <option value="99" disabled selected>Choose...</option>
+          <option value="0">GERMAN</option>
           <option value="1">ENGLISH</option>
           <option value="2">DUTCH</option>
           <option value="3">SWEDISH</option>
@@ -4467,7 +4473,7 @@ String ScanWiFi() {
     Serial.print(n);
     Serial.println(" WiFi networks found:");
     Serial.println(" ");
-    String ssidList = "<p><label for=\"mySSISelect\">Found these networks:</label><br /><select id=\"mySSIDSelect\" name=\"mySSIDSelect\"><option value=\"\" disabled selected>Choose yours ...</option>";
+    String ssidList = "<p><label for=\"mySSISelect\">Found these networks:</label><br /><select id=\"mySSIDSelect\" name=\"mySSIDSelect\"><option value=\"\" disabled selected>Choose...</option>";
     for (int i = 0; i < n; ++i) {
       ssidList += "<option value=\"" + WiFi.SSID(i) + "\">" + WiFi.SSID(i) + "</option>";
       // Print SSID and RSSI for each network found
@@ -4658,7 +4664,7 @@ void WIFI_SETUP() {
       showtext('F', TextWait, c);
       showtext('I', TextWait, c);
       showtext(' ', TextWait, c);
-      CaptivePotalSetup();
+      CaptivePortalSetup();
       SetWLAN(strip.Color(0, 255, 255));
     } else {
       Serial.println("Try to connect to found WiFi configuration: ");
