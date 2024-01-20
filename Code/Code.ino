@@ -61,7 +61,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V3.2.0";
+const char* WORD_CLOCK_VERSION = "V3.3.0";
 
 
 // ###########################################################################################################################################
@@ -4501,7 +4501,6 @@ const char* PARAM_INPUT_1 = "mySSID";
 const char* PARAM_INPUT_2 = "myPW";
 const char* PARAM_INPUT_3 = "setlanguage";
 const String captiveportalURL = "http://192.168.4.1";
-
 void CaptivePortalSetup() {
   String htmlConfigContent = ScanWiFi();
   const char* temp_ssid = "WordClock";
