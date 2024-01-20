@@ -12,7 +12,7 @@
 // # Creative Commons Attribution-NonCommercial 3.0 Unported License http://creativecommons.org/licenses/by-nc/3.0
 // # Important: NonCommercial — You may not use the material for commercial purposes !
 // #
-// # Compatible with WordClock version: V3.0.0
+// # Compatible with WordClock version: V3.2.0
 // #
 // ###########################################################################################################################################
 /*
@@ -63,17 +63,17 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ
 // ###########################################################################################################################################
 // # LED defaults:
 // ###########################################################################################################################################
-int redVal_back_default = 0;      // Default background color RED
-int greenVal_back_default = 255;  // Default background color GREEN
-int blueVal_back_default = 255;   // Default background color BLUE
-int redVal_time_default = 128;    // Default time color RED
-int greenVal_time_default = 0;    // Default time color GREEN
-int blueVal_time_default = 0;     // Default time color BLUE
-int intensity_day_default = 15;   // LED intensity (0..255) in day mode   - Important note: Check power consumption and used power supply capabilities!
-int intensity_night_default = 5;  // LED intensity (0..255) in day mode   - Important note: Check power consumption and used power supply capabilities!
-int usenightmode_default = 1;     // Use the night mode to reduce LED intensity during set times
-int day_time_start_default = 7;   // Define day mode start --> time before is then night mode if used
-int day_time_stop_default = 22;   // Define day mode end --> time after is then night mode if used
+int redVal_back_default = 0;              // Default background color RED
+int greenVal_back_default = 255;          // Default background color GREEN
+int blueVal_back_default = 255;           // Default background color BLUE
+int redVal_time_default = 128;            // Default time color RED
+int greenVal_time_default = 0;            // Default time color GREEN
+int blueVal_time_default = 0;             // Default time color BLUE
+int intensity_day_default = 15;           // LED intensity (0..255) in day mode   - Important note: Check power consumption and used power supply capabilities!
+int intensity_night_default = 5;          // LED intensity (0..255) in day mode   - Important note: Check power consumption and used power supply capabilities!
+int usenightmode_default = 1;             // Use the night mode to reduce LED intensity during set times
+String day_time_start_default = "06:15";  // Define day mode start --> time before is then night mode if used
+String day_time_stop_default = "22:14";   // Define day mode end --> time after is then night mode if used
 
 
 // ###########################################################################################################################################
@@ -125,7 +125,6 @@ int debugtexts = 0;          // Show more debug information in serial monitor
 int ShowTimeEachSecond = 0;  // Show current time each second in serial monitor
 int testTime = 0;            // LED time text output test
 int testPrintTimeTexts = 0;  // Print the time texts shown on the display in the serial monitor (Currently DE + IT only)
-int testDayNightmode = 0;    // Test the day/night mode settings
 // Test a special time Online Mode:
 int testspecialtimeON = 0;  // Use test a special time function
 int test_hourON = 23;       // Test a special time: hour

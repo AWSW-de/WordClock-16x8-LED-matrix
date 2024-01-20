@@ -17,6 +17,8 @@ The designs are available in:
 - Bavarian
 - Luxemburgish 
 
+This WordClock can be used in "Online Mode" with WiFi usage or in "Offline Mode" without the need of a local WiFi. In both modes you will be able to use an internal configuration portal to configure your WordClock. See pictures below. =)
+
 Happy printing =)
 
 
@@ -58,8 +60,13 @@ Images of 2023-V1 with stencil font and 2023-V2 and 2023-V3 with regular font:
 
 <img src="./Images/A0B50A9B-8A43-4066-939B-C25B38242FDF.jpeg">
 
-<img src="./Images/IMG_3197.jpeg">
-<img src="./Images/IMG_3198.jpeg">
-<img src="./Images/IMG_3199.jpeg">
+WordClock in Online Mode:
+<img src="./Images/IMG_3267.jpeg">
+<img src="./Images/IMG_3268.jpeg">
+<img src="./Images/IMG_3269.jpeg">
+
+WordClock in Offline Mode:
+<img src="./Images/IMG_3271.jpeg">
+<img src="./Images/IMG_3272.jpeg">
 
 <hr>
