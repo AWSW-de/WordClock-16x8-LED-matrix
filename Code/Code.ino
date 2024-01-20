@@ -4085,18 +4085,6 @@ void SetWLAN(uint32_t color) {
 
 
 // ###########################################################################################################################################
-// # Wifi scan function to help you to setup your WiFi connection
-// ###########################################################################################################################################
-int ScanWiFi() {
-  Serial.println("Scan WiFi networks - START");
-  int n = WiFi.scanNetworks();
-  Serial.println("WiFi scan done");
-  Serial.println("Scan WiFi networks - END");
-  return n;
-}
-
-
-// ###########################################################################################################################################
 // # Captive Portal web page to setup the device by AWSW:
 // ###########################################################################################################################################
 const char index_html[] PROGMEM = R"rawliteral(
@@ -4149,7 +4137,6 @@ const char index_html[] PROGMEM = R"rawliteral(
       function disableButtonAndSubmit() {
         var btn = document.getElementById("submitButton");
         btn.disabled = true;
-        btn.innerText = 'Scanning WiFis...';
         setTimeout(function() {
           document.forms["myForm"].submit();
         }, 100);
@@ -4334,15 +4321,14 @@ const char saved_html[] PROGMEM = R"rawliteral(
 
 
 // ###########################################################################################################################################
-// # Captive Portal by AWSW to avoid the usage of the WiFi Manager library to have more control
+// # Wifi scan function to help you to setup your WiFi connection
 // ###########################################################################################################################################
-const char* PARAM_INPUT_1 = "mySSID";
-const char* PARAM_INPUT_2 = "myPW";
-const char* PARAM_INPUT_3 = "setlanguage";
-const String captiveportalURL = "http://192.168.4.1";
-
-String generateConfigHTML(int n) {
+String ScanWiFi() {
   String html = config_html;
+  Serial.println("Scan WiFi networks - START");
+  int n = WiFi.scanNetworks();
+  Serial.println("WiFi scan done");
+  Serial.println("Scan WiFi networks - END");
   Serial.println(" ");
   if (n > 0) {
     Serial.print(n);
@@ -4368,7 +4354,17 @@ String generateConfigHTML(int n) {
   return html;
 }
 
-void CaptivePotalSetup() {
+
+// ###########################################################################################################################################
+// # Captive Portal by AWSW to avoid the usage of the WiFi Manager library to have more control
+// ###########################################################################################################################################
+const char* PARAM_INPUT_1 = "mySSID";
+const char* PARAM_INPUT_2 = "myPW";
+const char* PARAM_INPUT_3 = "setlanguage";
+const String captiveportalURL = "http://192.168.4.1";
+
+void CaptivePortalSetup() {
+  String htmlConfigContent = ScanWiFi();
   const char* temp_ssid = "WordClock";
   const char* temp_password = "";
   WiFi.softAP(temp_ssid, temp_password);
@@ -4418,10 +4414,8 @@ void CaptivePotalSetup() {
     ESP.restart();
   });
 
-  server.on("/start", HTTP_GET, [](AsyncWebServerRequest* request) {
-    int Wifis = ScanWiFi();
-    String htmlContent = generateConfigHTML(Wifis);;
-    request->send_P(200, "text/html", htmlContent.c_str());
+  server.on("/start", HTTP_GET, [htmlConfigContent](AsyncWebServerRequest* request) {
+    request->send_P(200, "text/html", htmlConfigContent.c_str());
   });
 
   server.on("/connecttest.txt", [](AsyncWebServerRequest* request) {
@@ -4532,7 +4526,7 @@ void WIFI_SETUP() {
       showtext("I", TextWait, c);
       showtext(" ", TextWait, c);
       SetWLAN(strip.Color(0, 255, 255));
-      CaptivePotalSetup();
+      CaptivePortalSetup();
     } else {
       Serial.println("Try to connect to found WiFi configuration: ");
       WiFi.disconnect();
