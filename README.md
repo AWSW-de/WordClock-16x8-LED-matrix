@@ -48,6 +48,13 @@ Setup video instructions available for <a href="https://www.youtube.com/watch?v=
 
 <hr>
 
+Images of the WordClock 16x8 - 2024:
+
+<img src="./Images/IMG_2089.jpeg">
+
+<img src="./Images/IMG_2091.jpeg">
+
+<hr>
 
 Images of 2023-V1 with stencil font and 2023-V2 and 2023-V3 with regular font:
 
