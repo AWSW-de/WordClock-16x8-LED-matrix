@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V3.4.1";
+const char* WORD_CLOCK_VERSION = "V3.4.2";
 
 
 // ###########################################################################################################################################
@@ -430,7 +430,7 @@ void setupWebInterface() {
     ESPUI.label("Update URLs", ControlColor::Dark, "<a href='http://" + IpAddress2String(WiFi.localIP()) + ":8080' target='_blank' style='color:#ffffff;'>http://" + IpAddress2String(WiFi.localIP()) + ":8080</a> or <a href='http://" + String(WiFi.getHostname()) + ":8080' target='_blank' style='color:#ffffff;'>http://" + String(WiFi.getHostname()) + ":8080</a>");
 
     // AWSW software GitHub repository:
-    ESPUI.label("Download newer software updates here", ControlColor::Dark, "<a href='https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023' target='_blank' style='color:#ffffff;'>https://github.com/AWSW-de/WordClock-16x16-LED-matrix-2023</a>");
+    ESPUI.label("Download newer software updates here", ControlColor::Dark, "<a href='https://github.com/AWSW-de/WordClock-16x8-LED-matrix' target='_blank' style='color:#ffffff;'>https://github.com/AWSW-de/WordClock-16x8-LED-matrix</a>");
   }
 
 
