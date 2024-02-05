@@ -15,7 +15,7 @@ The designs are available in:
 - Chinese
 - Swabian German
 - Bavarian
-- Luxemburgish
+- Luxembourgish
 - East German
 
 This WordClock can be used in "Online Mode" with WiFi usage or in "Offline Mode" without the need of a local WiFi. In both modes you will be able to use an internal configuration portal to configure your WordClock. See pictures below. =)
