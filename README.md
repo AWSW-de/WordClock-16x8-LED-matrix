@@ -1,6 +1,6 @@
 # WordClock-16x8-LED-matrix 
 
-WordClock 16x8 LED matrix 2023 and 2024 in 3 design variants each. Super easy to print and build, 3 wires to solder only. The 2024 variant comes as solder free variant too. =)
+WordClock 16x8 LED matrix 2023 and 2024 in 3-4 design variants each. Super easy to print and build, 3 wires to solder only. The 2024 variant comes as solder free variant too. =)
 
 Code for the <a href="https://www.printables.com/de/search/models?q=WordClock%2016x8%20@awsw&ctx=models">WordClock 16x8 LED matrix projects</a> as 3D print on <a href="https://www.printables.com">www.printables.com</a>
 
