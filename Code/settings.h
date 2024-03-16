@@ -10,7 +10,7 @@
 // # Creative Commons Attribution-NonCommercial 3.0 Unported License http://creativecommons.org/licenses/by-nc/3.0
 // # Important: NonCommercial — You may not use the material for commercial purposes !
 // #
-// # Compatible with WordClock version: V3.4.2
+// # Compatible with WordClock version: V3.5.0
 // #
 // ###########################################################################################################################################
 /*
@@ -47,6 +47,7 @@ int langLEDlayout_default = 0;  // Can be selected in the configuraration portal
 // 9 = BAY    - BAVARIAN
 // 10 = LTZ   - LUXEMBOURGISH
 // 11 = EAST  - EAST GERMAN
+// 12 = AT    - AUSTRIAN (2024 models only)
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 
@@ -123,11 +124,11 @@ String Timezone_default = "CET-1CEST,M3.5.0,M10.5.0/3";  // Here you can set you
 int debugtexts = 0;          // Show more debug information in serial monitor
 int ShowTimeEachSecond = 0;  // Show current time each second in serial monitor
 int testTime = 0;            // LED time text output test
-int testPrintTimeTexts = 0;  // Print the time texts shown on the display in the serial monitor (Currently DE + IT only)
+int testPrintTimeTexts = 0;  // Print the time texts shown on the display in the serial monitor
 // Test a special time Online Mode:
 int testspecialtimeON = 0;  // Use test a special time function
-int test_hourON = 23;       // Test a special time: hour
-int test_minuteON = 38;     // Test a special time: minute
+int test_hourON = 13;       // Test a special time: hour
+int test_minuteON = 7;      // Test a special time: minute
 int test_secondON = 45;     // Test a special time: second
 // Test a special time Offline Mode:
 int testspecialtimeOFF = 0;  // Use test a special time function
