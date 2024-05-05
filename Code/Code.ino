@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V3.5.0";
+const char* WORD_CLOCK_VERSION = "V3.7.0";
 
 
 // ###########################################################################################################################################
@@ -90,6 +90,14 @@ int sliderBrightnessDayID, switchNightModeID, sliderBrightnessNightID, call_day_
 int UseOnlineMode, OfflineCurrentHourOffset, iHourOffset, statusTimeFromDevice, statusTimeSetOffline, OfflineModeHint1, OfflineModeHint2, OfflineModeHint3, showOMhints;
 uint16_t text_colour_background, text_colour_time, selectLang, timeId;
 String iStartTime, selectLangTXT, myTimeZone, myTimeServer, Timezone, NTPserver, day_time_start, day_time_stop, statusNightModeIDtxt;
+// WiFi REconnect function:
+unsigned long WiFi_currentMillis = 0;
+unsigned long WiFi_previousMillis = 0;
+unsigned long WiFi_interval = 60000;
+int WiFi_retry_counter = 0;
+int useWiFiReCon, WiFiReConHint;
+int WiFi_FlashLEDs = 10;
+int WiFi_Restart = 30;
 
 
 // ###########################################################################################################################################
@@ -131,6 +139,16 @@ void setup() {
 void loop() {
   if (UseOnlineMode == 1) {  // Online Mode actions:
     if ((WiFIsetup == true) || (testTime == 1)) {
+      WiFi_currentMillis = millis();
+      if ((useWiFiReCon == true) && (WiFIsetup == true) && (WiFi.status() != WL_CONNECTED) && (WiFi_currentMillis - WiFi_previousMillis >= WiFi_interval)) {  // Device offline during runtime? > Reconnect now!
+        WiFi_Lost();
+      }
+      if ((useWiFiReCon == true) && (WiFIsetup == true) && (WiFi.status() == WL_CONNECTED) && (WiFi_retry_counter >= 1)) {  // Device was offline during runtime? > Reconnect was successfull!
+        Serial.println("Reconnecting to WiFi = SUCCESS");
+        WiFi_retry_counter = 0;
+        updatedevice = true;
+        updatenow = true;
+      }
       printLocalTime();                               // Locally get the time (NTP server requests done 1x per hour)
       if (updatedevice == true) {                     // Allow display updates (normal usage)
         if (changedvalues == true) setFlashValues();  // Write settings to flash
@@ -339,6 +357,24 @@ void setupWebInterface() {
 
     // WiFi Gateway address:
     ESPUI.label("Gateway address", ControlColor::Dark, IpAddress2String(WiFi.gatewayIP()));
+
+    // Maximum retries to reach the configured WiFi:
+    ESPUI.label("Max. tries on startup until the WiFi config is reset", ControlColor::Dark, String(maxWiFiconnctiontries));
+  }
+
+
+
+  // Section WiFi reconnect:
+  // #######################
+  if (UseOnlineMode == 1) {
+    ESPUI.separator("Active WiFi reconnect during runtime:");
+
+    // Use WIFi reconnect function during runtime:
+    ESPUI.switcher("Use active WIFi reconnect function during runtime", &switchWiFiReConnect, ControlColor::Dark, useWiFiReCon);
+
+    // Notes about active WiFi reconnect:  
+    WiFiReConHint = ESPUI.label("Notes about active WiFi reconnect", ControlColor::Dark, "WordClock will check its connection to your WiFi every " + String(WiFi_interval / 1000) + " seconds (" + String((WiFi_interval / 1000) / 60) + " minute(s)). If the WiFi cannot be reached anymore it will continue to work offline for " + String((WiFi_interval / 1000) * WiFi_FlashLEDs) + " seconds (" + String(((WiFi_interval / 1000) * WiFi_FlashLEDs) / 60) + " minutes), but will flash the WiFi LEDs in blue, yellow and red then. If after " + String((WiFi_interval / 1000) * WiFi_Restart) + " seconds (" + String(((WiFi_interval / 1000) * WiFi_Restart) / 60) + " minutes) the WiFi can still not be reconnected, WordClock will reboot automatically to solve the connection problem. In case the WiFi then still not is able to reach for " + String(maxWiFiconnctiontries) + " tries, the configuration will be set to default. It is expected then, that the WiFi will not be available anymore, e.g. due to a change of your router, etc...");
+    ESPUI.setPanelStyle(WiFiReConHint, "width: 60%;");
   }
 
 
@@ -535,6 +571,7 @@ void getFlashValues() {
   useStartupText = preferences.getUInt("useStartupText", useStartupText_default);
   usesinglemin = preferences.getUInt("usesinglemin", usesinglemin_default);
   RandomColor = preferences.getUInt("RandomColor", RandomColor_default);
+  useWiFiReCon = preferences.getUInt("useWiFiReCon", useWiFiReCon_default);
   if (debugtexts == 1) Serial.println("Read settings from flash: END");
 }
 
@@ -566,6 +603,7 @@ void setFlashValues() {
   preferences.putUInt("useStartupText", useStartupText);
   preferences.putUInt("usesinglemin", usesinglemin);
   preferences.putUInt("RandomColor", RandomColor);
+  preferences.putUInt("useWiFiReCon", useWiFiReCon);
   if (debugtexts == 1) Serial.println("Write settings to flash: END");
   checkforNightMode();
   updatenow = true;  // Update display now...
@@ -610,6 +648,7 @@ void buttonWordClockReset(Control* sender, int type, void* param) {
   preferences.putUInt("RandomColor", RandomColor_default);
   preferences.putString("myTimeZone", Timezone_default);
   preferences.putString("myTimeServer", NTPserver_default);
+  preferences.putUInt("useWiFiReCon", useWiFiReCon_default);
   delay(100);
   preferences.end();
   Serial.println("####################################################################################################");
@@ -1323,6 +1362,25 @@ void switchShowIP(Control* sender, int value) {
 
 
 // ###########################################################################################################################################
+// # GUI: Use WIFi reconnect function during runtime:
+// ###########################################################################################################################################
+void switchWiFiReConnect(Control* sender, int value) {
+  updatedevice = false;
+  delay(1000);
+  switch (value) {
+    case S_ACTIVE:
+      useWiFiReCon = 1;
+      break;
+    case S_INACTIVE:
+      useWiFiReCon = 0;
+      break;
+  }
+  changedvalues = true;
+  updatedevice = true;
+}
+
+
+// ###########################################################################################################################################
 // # GUI: Show WordClock text switch:
 // ###########################################################################################################################################
 void switchStartupText(Control* sender, int value) {
@@ -1644,7 +1702,7 @@ void timeCallback(Control* sender, int type) {
     iHour = tm.tm_hour;
     iMinute = tm.tm_min;
     iSecond = tm.tm_sec;
-    
+
     // Test a special time:
     if (testspecialtimeOFF == 1) {
       // Serial.println("Special time test active in Offline Mode: " + String(test_hourOFF) + ":" + String(test_minuteOFF) + ":" + String(test_secondOFF));
@@ -3558,7 +3616,7 @@ void show_time(int hours, int minutes) {
       if (testPrintTimeTexts == 1) Serial.print("ZEHN ");
     }
     // VIERTEL:
-    if((minDiv == 3) || (minDiv == 9)) {
+    if ((minDiv == 3) || (minDiv == 9)) {
       setLEDcol(65, 71, colorRGB);
       if (testPrintTimeTexts == 1) Serial.print("VIERTEL ");
     }
@@ -3685,7 +3743,6 @@ void show_time(int hours, int minutes) {
       setLEDcol(237, 239, colorRGB);  // UHR
       if (testPrintTimeTexts == 1) Serial.print("UHR ");
     }
-
   }
 
   strip.show();
@@ -5054,33 +5111,27 @@ void WIFI_SETUP() {
     String WIFIssid = preferences.getString("WIFIssid");
     bool WiFiConfigEmpty = false;
     if (WIFIssid == "") {
-      // Serial.println("WIFIssid empty");
       WiFiConfigEmpty = true;
-    } else {
-      // Serial.print("WIFIssid = ");
-      // Serial.println(WIFIssid);
     }
     String WIFIpass = preferences.getString("WIFIpass");
     if (WIFIpass == "") {
-      // Serial.println("WIFIpass empty");
       WiFiConfigEmpty = true;
-    } else {
-      // Serial.print("WIFIpass = ");
-      // Serial.println(WIFIpass);
     }
     if (WiFiConfigEmpty == true) {
       Serial.println("Show SET WIFI...");
       uint32_t c = strip.Color(0, 255, 255);
-      int TextWait = 500;
-      showtext('S', TextWait, c);
-      showtext('E', TextWait, c);
-      showtext('T', TextWait, c);
-      showtext(' ', TextWait, c);
-      showtext('W', TextWait, c);
-      showtext('I', TextWait, c);
-      showtext('F', TextWait, c);
-      showtext('I', TextWait, c);
-      showtext(' ', TextWait, c);
+      for (int i = 0; i < 3; i++) {
+        int TextWait = 500;
+        showtext('S', TextWait, c);
+        showtext('E', TextWait, c);
+        showtext('T', TextWait, c);
+        showtext(' ', TextWait, c);
+        showtext('W', TextWait, c);
+        showtext('I', TextWait, c);
+        showtext('F', TextWait, c);
+        showtext('I', TextWait, c);
+        showtext(' ', TextWait, c);
+      }
       CaptivePortalSetup();
       SetWLAN(strip.Color(0, 255, 255));
     } else {
@@ -5088,7 +5139,6 @@ void WIFI_SETUP() {
       WiFi.disconnect();
       int tryCount = 0;
       WiFi.mode(WIFI_STA);
-      // WiFi.setHostname(hostname); // Potential ESP32 bug... Does not work anymore :(
       WiFi.begin((const char*)WIFIssid.c_str(), (const char*)WIFIpass.c_str());
       Serial.println("Connecting to WiFi: " + String(WIFIssid));
       while (WiFi.status() != WL_CONNECTED) {
@@ -5761,6 +5811,51 @@ void showtext(char letter, int wait, uint32_t c) {
   }
   strip.show();
   delay(wait);
+}
+
+
+// ###########################################################################################################################################
+// # // WordClock is offline during runtime! --> Restart and reconnect now!
+// ###########################################################################################################################################
+void WiFi_Lost() {
+  Serial.print("WordClock is offline during runtime! ");
+  Serial.print(millis());
+  Serial.print(" - Reconnecting to WiFi... ");
+  WiFi.disconnect();
+  WiFi.reconnect();
+  WiFi_previousMillis = WiFi_currentMillis;
+  WiFi_retry_counter = WiFi_retry_counter + 1;
+  Serial.print(" Retry count: " + String(WiFi_retry_counter));
+
+  // delay(1000);
+
+  if ((WiFi.status() != WL_CONNECTED)) {
+    Serial.println(" - Reconnecting to WiFi = FAILED - Next try in " + String(WiFi_interval / 1000) + " seconds...");
+  }
+
+  if (WiFi_retry_counter >= WiFi_FlashLEDs) {
+    Serial.println("WordClock is offline during runtime for 10+ tries! --> Flash LEDs 3x now!");
+    for (int i = 0; i < 3; i++) {
+      updatedevice = false;
+      SetWLAN(strip.Color(0, 0, 255));
+      delay(1000);
+      SetWLAN(strip.Color(255, 255, 0));
+      delay(1000);
+      SetWLAN(strip.Color(255, 0, 0));
+      delay(1000);
+    }
+  }
+
+  if (WiFi_retry_counter >= WiFi_Restart) {
+    Serial.println("WordClock is offline during runtime for 30 tries! --> Restart and reconnect now!");
+    updatedevice = false;
+    delay(250);
+    ResetTextLEDs(strip.Color(0, 255, 0));
+    if (changedvalues == true) setFlashValues();  // Write settings to flash
+    preferences.end();
+    delay(1000);
+    ESP.restart();
+  }
 }
 
 

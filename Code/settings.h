@@ -10,7 +10,7 @@
 // # Creative Commons Attribution-NonCommercial 3.0 Unported License http://creativecommons.org/licenses/by-nc/3.0
 // # Important: NonCommercial — You may not use the material for commercial purposes !
 // #
-// # Compatible with WordClock version: V3.5.0
+// # Compatible with WordClock version: V3.7.0
 // #
 // ###########################################################################################################################################
 /*
@@ -79,12 +79,13 @@ String day_time_stop_default = "22:14";   // Define day mode end --> time after 
 // ###########################################################################################################################################
 // # Various default settings:
 // ###########################################################################################################################################
-int useshowip_default = 1;       // Show the current ip at boot
-int usesinglemin_default = 1;    // Show the single minutes
-int RandomColor_default = 0;     // Change text color every minute in random color
-int useStartupText_default = 1;  // Show the "WordClock" text at boot
-int maxWiFiconnctiontries = 30;  // Maximum connection tries to logon to the set WiFi. After the amount of tries is reached the WiFi settings will be deleted!
-int iHourOffset_default = 1;     // Offset of hours in Offline Mode
+int useshowip_default = 1;        // Show the current ip at boot
+int usesinglemin_default = 1;     // Show the single minutes
+int RandomColor_default = 0;      // Change text color every minute in random color
+int useStartupText_default = 1;   // Show the "WordClock" text at boot
+int maxWiFiconnctiontries = 100;  // Maximum connection tries to logon to the set WiFi. After the amount of tries is reached the WiFi settings will be deleted!
+int iHourOffset_default = 1;      // Offset of hours in Offline Mode
+int useWiFiReCon_default = 1;     // Use the WiFi reconnect function during runtime
 
 
 // ###########################################################################################################################################
