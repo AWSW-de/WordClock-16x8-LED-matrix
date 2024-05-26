@@ -10,7 +10,7 @@
 // # Creative Commons Attribution-NonCommercial 3.0 Unported License http://creativecommons.org/licenses/by-nc/3.0
 // # Important: NonCommercial — You may not use the material for commercial purposes !
 // #
-// # Compatible with WordClock version: V3.7.0
+// # Compatible with WordClock version: V3.8.0
 // #
 // ###########################################################################################################################################
 /*
@@ -48,6 +48,7 @@ int langLEDlayout_default = 0;  // Can be selected in the configuraration portal
 // 10 = LTZ   - LUXEMBOURGISH
 // 11 = EAST  - EAST GERMAN
 // 12 = AT    - AUSTRIAN (2024 models only)
+// 13 = GR    - GREEK (2024 models only)
 // NOTE: You may need to use the "Reset WordClock settings"-button to update the value on the device
 
 

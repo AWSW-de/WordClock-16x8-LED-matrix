@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V3.7.0";
+const char* WORD_CLOCK_VERSION = "V3.8.0";
 
 
 // ###########################################################################################################################################
@@ -372,7 +372,7 @@ void setupWebInterface() {
     // Use WIFi reconnect function during runtime:
     ESPUI.switcher("Use active WIFi reconnect function during runtime", &switchWiFiReConnect, ControlColor::Dark, useWiFiReCon);
 
-    // Notes about active WiFi reconnect:  
+    // Notes about active WiFi reconnect:
     WiFiReConHint = ESPUI.label("Notes about active WiFi reconnect", ControlColor::Dark, "WordClock will check its connection to your WiFi every " + String(WiFi_interval / 1000) + " seconds (" + String((WiFi_interval / 1000) / 60) + " minute(s)). If the WiFi cannot be reached anymore it will continue to work offline for " + String((WiFi_interval / 1000) * WiFi_FlashLEDs) + " seconds (" + String(((WiFi_interval / 1000) * WiFi_FlashLEDs) / 60) + " minutes), but will flash the WiFi LEDs in blue, yellow and red then. If after " + String((WiFi_interval / 1000) * WiFi_Restart) + " seconds (" + String(((WiFi_interval / 1000) * WiFi_Restart) / 60) + " minutes) the WiFi can still not be reconnected, WordClock will reboot automatically to solve the connection problem. In case the WiFi then still not is able to reach for " + String(maxWiFiconnctiontries) + " tries, the configuration will be set to default. It is expected then, that the WiFi will not be available anymore, e.g. due to a change of your router, etc...");
     ESPUI.setPanelStyle(WiFiReConHint, "width: 60%;");
   }
@@ -488,6 +488,7 @@ void setupWebInterface() {
   if (langLEDlayout == 10) selectLangTXT = "Luxembourgish";
   if (langLEDlayout == 11) selectLangTXT = "East German";
   if (langLEDlayout == 12) selectLangTXT = "Austrian (2024 models only)";
+  if (langLEDlayout == 13) selectLangTXT = "Greek (2024 models only)";
   Serial.print("Selected language: ");
   Serial.println(selectLangTXT);
 
@@ -506,6 +507,7 @@ void setupWebInterface() {
   ESPUI.addControl(ControlType::Option, "Luxembourgish", "10", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "East German", "11", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "Austrian (2024 models only)", "12", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Greek (2024 models only)", "13", ControlColor::Alizarin, selectLang);
 
   // Current language:
   statusLanguageID = ESPUI.label("Current layout language", ControlColor::Dark, selectLangTXT);
@@ -682,6 +684,7 @@ void call_langauge_select(Control* sender, int type) {
   if (langLEDlayout == 10) selectLangTXT = "Luxembourgish";
   if (langLEDlayout == 11) selectLangTXT = "East German";
   if (langLEDlayout == 12) selectLangTXT = "Austrian (2024 models only)";
+  if (langLEDlayout == 13) selectLangTXT = "Greek (2024 models only)";
   if (debugtexts == 1) {
     Serial.print("Selected language ID: ");
     Serial.println(langLEDlayout);
@@ -1239,6 +1242,10 @@ void ResetTextLEDs(uint32_t color) {
   }
 
   if (langLEDlayout == 12) {   // AUSTRIAN:
+    setLEDcol(11, 15, color);  // RESET
+  }
+
+  if (langLEDlayout == 13) {   // GREEK:
     setLEDcol(11, 15, color);  // RESET
   }
 
@@ -3745,6 +3752,128 @@ void show_time(int hours, int minutes) {
     }
   }
 
+  // ########################################################### GREEK:
+  if (langLEDlayout == 13) {  // GREEK: This language was coded by a user... Seems to be wrong in some areas...
+
+    // ES IST = I ORA EINAI
+    setLEDcol(11, 13, colorRGB);
+    setLEDcol(15, 15, colorRGB);
+    setLEDcol(5, 9, colorRGB);
+
+    // FUNF = PENTEF: (Minuten)
+    if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
+      setLEDcol(227, 231, colorRGB);
+    }
+    // ZEHN = DEKA: (Minuten)
+    if ((minDiv == 2) || (minDiv == 10)) {
+      setLEDcol(200, 203, colorRGB);
+    }
+    // VIERTEL = TETARTO:
+    if ((minDiv == 3) || (minDiv == 9)) {
+      setLEDcol(193, 199, colorRGB);
+    }
+    // FÜNFUNDZWANZIG = EIKOSIPENTE:
+    if ((minDiv == 5) || (minDiv == 7)) {
+      setLEDcol(227, 237, colorRGB);
+    }
+    // ZWANZIG = EIKOSI:
+    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 7) || (minDiv == 8)) {
+      setLEDcol(232, 237, colorRGB);
+    }
+    // NACH = KAI:
+    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 5)) {
+      setLEDcol(160, 162, colorRGB);
+    }
+    // VOR = PARA:
+    if ((minDiv == 7) || (minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
+      setLEDcol(129, 132, colorRGB);
+    }
+    // HALB = MISI:
+    if (minDiv == 6) {
+      setLEDcol(161, 164, colorRGB);
+      setLEDcol(166, 168, colorRGB);
+    }
+
+    //set hour from 1 to 12 (at noon, or midnight)
+    int xHour = (iHour % 12);
+    if (xHour == 0)
+      xHour = 12;
+    // at minute 35 hour needs to be counted up:
+    if (iMinute >= 35) {
+      if (xHour == 12)
+        xHour = 1;
+      else
+        xHour++;
+    }
+
+    switch (xHour) {
+      case 1:
+        {
+          setLEDcol(32, 34, colorRGB);  // EIN = MIA
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(35, 37, colorRGB);  // ZWEI = DIO
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(64, 68, colorRGB);  // DREI = TREIS
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(135, 142, colorRGB);  // VIER = TESSERIS
+          break;
+        }
+      case 5:
+        {
+          setLEDcol(171, 175, colorRGB);  // FUENF = PENTE
+          break;
+        }
+      case 6:
+        {
+          setLEDcol(103, 105, colorRGB);  // SECHS = EXI
+          break;
+        }
+      case 7:
+        {
+          setLEDcol(75, 78, colorRGB);  // SIEBEN = EPTA
+          break;
+        }
+      case 8:
+        {
+          setLEDcol(38, 41, colorRGB);  // ACHT = OXTO
+          break;
+        }
+      case 9:
+        {
+          setLEDcol(98, 102, colorRGB);  // NEUN = ENNEA
+          break;
+        }
+      case 10:
+        {
+          setLEDcol(106, 109, colorRGB);  // ZEHN = DEKA (Stunden)
+          break;
+        }
+      case 11:
+        {
+          setLEDcol(69, 74, colorRGB);  // ELF = ENDEKA
+          break;
+        }
+      case 12:
+        {
+          setLEDcol(106, 111, colorRGB);  // ZWÖLF = DODEKA
+          break;
+        }
+    }
+
+    if (iMinute < 5) {
+      setLEDcol(225, 225, colorRGB);  // UHR OMEGA Ω
+    }
+  }
+
   strip.show();
 }
 
@@ -4207,6 +4336,37 @@ void showMinutes(int minutes) {
         }
     }
   }
+
+  // ##################################################### GREEK:
+  if (langLEDlayout == 13) {  // GREEK: This language was coded by a user... Minutes word missing Seems to be wrong...
+
+    switch (minMod) {
+      case 1:
+        {
+          setLEDcol(4, 4, colorRGB);  // +
+          setLEDcol(3, 3, colorRGB);  // 1
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(4, 4, colorRGB);  // +
+          setLEDcol(2, 2, colorRGB);  // 2
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(4, 4, colorRGB);  // +
+          setLEDcol(1, 1, colorRGB);  // 3
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(4, 4, colorRGB);  // +
+          setLEDcol(0, 0, colorRGB);  // 4
+          break;
+        }
+    }
+  }
 }
 
 
@@ -4330,6 +4490,10 @@ void initTime(String timezone) {
       setLEDcol(0, 3, strip.Color(0, 0, 255));  // ZEIT
     }
 
+    if (langLEDlayout == 13) {                  // GREEK:
+      setLEDcol(0, 3, strip.Color(0, 0, 255));  // ZEIT ??? 1234 ??? This language was coded by a user... Seems to be wrong...
+    }
+
     strip.show();
     delay(500);
   }
@@ -4402,6 +4566,11 @@ void initTime(String timezone) {
       setLEDcol(0, 3, strip.Color(255, 0, 0));  // ZEIT
     }
 
+    if (langLEDlayout == 13) {                  // GREEK:
+      setLEDcol(0, 3, strip.Color(255, 0, 0));  // ZEIT ??? 1234 ??? This language was coded by a user... Seems to be wrong...
+    }
+
+
     strip.show();
     delay(250);
     ClearDisplay();
@@ -4472,6 +4641,10 @@ void initTime(String timezone) {
 
   if (langLEDlayout == 12) {                  // AUSTRIAN:
     setLEDcol(0, 3, strip.Color(0, 255, 0));  // ZEIT
+  }
+
+  if (langLEDlayout == 13) {                  // GREEK:
+    setLEDcol(0, 3, strip.Color(0, 255, 0));  // ZEIT ??? 1234 ??? This language was coded by a user... Seems to be wrong...
   }
 
   strip.show();
@@ -4686,6 +4859,10 @@ void SetWLAN(uint32_t color) {
     setLEDcol(4, 7, color);   // WLAN
   }
 
+  if (langLEDlayout == 13) {  // GREEK:
+    setLEDcol(4, 7, color);   // WIFI This language was coded by a user... Could to be wrong...
+  }
+
   strip.show();
 }
 
@@ -4888,6 +5065,7 @@ const char config_html[] PROGMEM = R"rawliteral(
           <option value="10">LUXEMBOURGISH</option>
           <option value="11">EAST GERMAN</option>
           <option value="12">AUSTRIAN (2024 models only)</option>
+          <option value="13">GREEK (2024 models only)</option>
         </select>
       </p>
       <p class="error">Errors will be displayed here!</p>
@@ -5530,7 +5708,6 @@ void ShowOfflineIPaddress() {
     delay(ipdelay);
   }
 }
-
 
 
 // ###########################################################################################################################################
