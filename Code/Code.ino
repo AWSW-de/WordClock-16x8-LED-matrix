@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V3.8.2";
+const char* WORD_CLOCK_VERSION = "V3.9.0";
 
 
 // ###########################################################################################################################################
@@ -489,6 +489,7 @@ void setupWebInterface() {
   if (langLEDlayout == 11) selectLangTXT = "East German";
   if (langLEDlayout == 12) selectLangTXT = "Austrian (2024 models only)";
   if (langLEDlayout == 13) selectLangTXT = "Greek (2024 models only)";
+  if (langLEDlayout == 14) selectLangTXT = "Spanish (2024 models only)";
   Serial.print("Selected language: ");
   Serial.println(selectLangTXT);
 
@@ -508,6 +509,7 @@ void setupWebInterface() {
   ESPUI.addControl(ControlType::Option, "East German", "11", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "Austrian (2024 models only)", "12", ControlColor::Alizarin, selectLang);
   ESPUI.addControl(ControlType::Option, "Greek (2024 models only)", "13", ControlColor::Alizarin, selectLang);
+  ESPUI.addControl(ControlType::Option, "Spanish (2024 models only)", "14", ControlColor::Alizarin, selectLang);
 
   // Current language:
   statusLanguageID = ESPUI.label("Current layout language", ControlColor::Dark, selectLangTXT);
@@ -685,6 +687,7 @@ void call_langauge_select(Control* sender, int type) {
   if (langLEDlayout == 11) selectLangTXT = "East German";
   if (langLEDlayout == 12) selectLangTXT = "Austrian (2024 models only)";
   if (langLEDlayout == 13) selectLangTXT = "Greek (2024 models only)";
+  if (langLEDlayout == 14) selectLangTXT = "Spanish (2024 models only)";
   if (debugtexts == 1) {
     Serial.print("Selected language ID: ");
     Serial.println(langLEDlayout);
@@ -1248,6 +1251,10 @@ void ResetTextLEDs(uint32_t color) {
 
   if (langLEDlayout == 13) {   // GREEK:
     setLEDcol(11, 15, color);  // RESET
+  }
+
+  if (langLEDlayout == 14) {     // SPANISH:
+    setLEDcol(224, 228, color);  // RESET
   }
 
   strip.show();
@@ -3875,6 +3882,171 @@ void show_time(int hours, int minutes) {
     }
   }
 
+  // ########################################################### SPANISH:
+  if (langLEDlayout == 14) {  // SPANISH:
+
+    // SON LA at 1 or 13 or SON LAS for all other hours:
+    if ((iHour == 1) || (iHour == 13)) {
+      setLEDcol(13, 15, colorRGB);
+      setLEDcol(10, 11, colorRGB);
+      if (testPrintTimeTexts == 1) {
+        Serial.println("");
+        Serial.print(hours);
+        Serial.print(":");
+        Serial.print(minutes);
+        Serial.print(" --> SON LA ");
+      }
+    } else {
+      setLEDcol(13, 15, colorRGB);
+      setLEDcol(9, 11, colorRGB);
+      if (testPrintTimeTexts == 1) {
+        Serial.println("");
+        Serial.print(hours);
+        Serial.print(":");
+        Serial.print(minutes);
+        Serial.print(" --> SON LAS ");
+      }
+    }
+
+    //set hour from 1 to 12 (at noon, or midnight)
+    int xHour = (iHour % 12);
+    if (xHour == 0)
+      xHour = 12;
+    // at minute 35 hour needs to be counted up:
+    // Twenty five to two = 13:35
+    if (iMinute >= 35) {
+      if (xHour == 12)
+        xHour = 1;
+      else
+        xHour++;
+    }
+
+    switch (xHour) {  // Hour numbers in 12 hour format:
+      case 1:
+        {
+          setLEDcol(5, 7, colorRGB);  // UNA / 1
+          if (testPrintTimeTexts == 1) Serial.print("UNA ");
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(64, 66, colorRGB);  // DOS / 2
+          if (testPrintTimeTexts == 1) Serial.print("DOS ");
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(40, 43, colorRGB);  // TRES / 3
+          if (testPrintTimeTexts == 1) Serial.print("TRES ");
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(106, 111, colorRGB);  // CUATRO / 4
+          if (testPrintTimeTexts == 1) Serial.print("CUATRO ");
+          break;
+        }
+      case 5:
+        {
+          setLEDcol(35, 39, colorRGB);  // CINCO / 5
+          if (testPrintTimeTexts == 1) Serial.print("CINCO ");
+          break;
+        }
+      case 6:
+        {
+          setLEDcol(44, 47, colorRGB);  // SEIS / 6
+          if (testPrintTimeTexts == 1) Serial.print("SEIS ");
+          break;
+        }
+      case 7:
+        {
+          setLEDcol(75, 79, colorRGB);  // SIETE / 7
+          if (testPrintTimeTexts == 1) Serial.print("SIETE ");
+          break;
+        }
+      case 8:
+        {
+          setLEDcol(103, 106, colorRGB);  // OCHO / 8
+          if (testPrintTimeTexts == 1) Serial.print("OCHO ");
+          break;
+        }
+      case 9:
+        {
+          setLEDcol(0, 4, colorRGB);  // NUEVE / 9
+          if (testPrintTimeTexts == 1) Serial.print("NUEVE ");
+          break;
+        }
+      case 10:
+        {
+          setLEDcol(71, 74, colorRGB);  // DIEZ / 10
+          if (testPrintTimeTexts == 1) Serial.print("DIEZ ");
+          break;
+        }
+      case 11:
+        {
+          setLEDcol(32, 35, colorRGB);  // ONCE / 11
+          if (testPrintTimeTexts == 1) Serial.print("ONCE ");
+          break;
+        }
+      case 12:
+        {
+          setLEDcol(67, 70, colorRGB);  // DOCE / 12
+          if (testPrintTimeTexts == 1) Serial.print("DOCE ");
+          break;
+        }
+    }
+
+    if (iMinute < 5) {
+      setLEDcol(99, 100, colorRGB);   // EN
+      setLEDcol(203, 207, colorRGB);  // PUNCTO
+      if (testPrintTimeTexts == 1) Serial.print("EN PUNCTO ");
+    }
+
+
+    // Y / PAST: // x:05 + x:10 + x:15 + x:20 + x:25 + x:30
+    if ((minDiv == 1) || (minDiv == 2) || (minDiv == 3) || (minDiv == 4) || (minDiv == 5) || (minDiv == 6)) {
+      setLEDcol(96, 96, colorRGB);
+      if (testPrintTimeTexts == 1) Serial.print("Y ");
+    }
+
+    // MENOS / TO: // x:35 + x:40 + x:45 + x:50 + x:55
+    if ((minDiv == 7) || (minDiv == 8) || (minDiv == 9) || (minDiv == 10) || (minDiv == 11)) {
+      setLEDcol(97, 101, colorRGB);
+      if (testPrintTimeTexts == 1) Serial.print("MENOS ");
+    }
+
+    // VEINTE / TWENTY: // x:20 + x:25 + x:35 + x:40
+    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 7) || (minDiv == 8)) {
+      setLEDcol(132, 137, colorRGB);
+      if (testPrintTimeTexts == 1) Serial.print("VEINTE");
+    }
+
+    // CINCO / FIVE: (Minutes) // x:05 + x:25 + x:35 + x:55
+    if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
+      setLEDcol(160, 164, colorRGB);
+      if (testPrintTimeTexts == 1) Serial.print("CINCO");
+    }
+
+    // DIEZ / TEN: (Minutes) // x:10 + x:50
+    if ((minDiv == 2) || (minDiv == 10)) {
+      setLEDcol(128, 131, colorRGB);
+      if (testPrintTimeTexts == 1) Serial.print("DIEZ ");
+    }
+
+    // CUARTO / QUARTER: // x:15 + X:45
+    if ((minDiv == 3) || (minDiv == 9)) {
+      setLEDcol(138, 143, colorRGB);
+      if (testPrintTimeTexts == 1) Serial.print("CUARTO ");
+    }
+
+    // MEDIA / HALF: // x:30
+    if ((minDiv == 6)) {
+      setLEDcol(171, 175, colorRGB);
+      if (testPrintTimeTexts == 1) Serial.print("MEDIA ");
+    }
+  }
+
+  // Display time output:
   strip.show();
 }
 
@@ -4368,6 +4540,41 @@ void showMinutes(int minutes) {
         }
     }
   }
+
+  // ##################################################### SPANISH:
+  if (langLEDlayout == 14) {  // SPANISH
+
+    switch (minMod) {
+      case 1:
+        {
+          setLEDcol(201, 201, colorRGB);  // +
+          setLEDcol(199, 199, colorRGB);  // 1
+          setLEDcol(192, 194, colorRGB);  // MIN
+          break;
+        }
+      case 2:
+        {
+          setLEDcol(201, 201, colorRGB);  // +
+          setLEDcol(198, 198, colorRGB);  // 2
+          setLEDcol(192, 194, colorRGB);  // MIN
+          break;
+        }
+      case 3:
+        {
+          setLEDcol(201, 201, colorRGB);  // +
+          setLEDcol(197, 197, colorRGB);  // 3
+          setLEDcol(192, 194, colorRGB);  // MIN
+          break;
+        }
+      case 4:
+        {
+          setLEDcol(201, 201, colorRGB);  // +
+          setLEDcol(196, 196, colorRGB);  // 4
+          setLEDcol(192, 194, colorRGB);  // MIN
+          break;
+        }
+    }
+  }
 }
 
 
@@ -4495,6 +4702,10 @@ void initTime(String timezone) {
       setLEDcol(0, 3, strip.Color(0, 0, 255));  // ZEIT ??? 1234 ??? This language was coded by a user... Seems to be wrong...
     }
 
+    if (langLEDlayout == 14) {                      // SPANISH:
+      setLEDcol(230, 233, strip.Color(0, 0, 255));  // HORA
+    }
+
     strip.show();
     delay(500);
   }
@@ -4569,6 +4780,10 @@ void initTime(String timezone) {
 
     if (langLEDlayout == 13) {                  // GREEK:
       setLEDcol(0, 3, strip.Color(255, 0, 0));  // ZEIT ??? 1234 ??? This language was coded by a user... Seems to be wrong...
+    }
+
+    if (langLEDlayout == 14) {                      // SPANISH:
+      setLEDcol(230, 233, strip.Color(255, 0, 0));  // HORA
     }
 
 
@@ -4647,6 +4862,11 @@ void initTime(String timezone) {
   if (langLEDlayout == 13) {                  // GREEK:
     setLEDcol(0, 3, strip.Color(0, 255, 0));  // ZEIT ??? 1234 ??? This language was coded by a user... Seems to be wrong...
   }
+
+  if (langLEDlayout == 14) {                      // SPANISH:
+    setLEDcol(230, 233, strip.Color(0, 255, 0));  // HORA
+  }
+
 
   strip.show();
   delay(1000);
@@ -4864,6 +5084,10 @@ void SetWLAN(uint32_t color) {
     setLEDcol(4, 7, color);   // WIFI This language was coded by a user... Could to be wrong...
   }
 
+  if (langLEDlayout == 14) {     // SPANISH:
+    setLEDcol(235, 238, color);  // WIFI
+  }
+
   strip.show();
 }
 
@@ -5067,6 +5291,7 @@ const char config_html[] PROGMEM = R"rawliteral(
           <option value="11">EAST GERMAN</option>
           <option value="12">AUSTRIAN (2024 models only)</option>
           <option value="13">GREEK (2024 models only)</option>
+          <option value="14">SPANISH (2024 models only)</option>
         </select>
       </p>
       <p class="error">Errors will be displayed here!</p>
