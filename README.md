@@ -21,6 +21,10 @@ The designs are available in:
 - Greek
 - Spanish
 
+Example with all 4 fonts in Spanish language:
+
+<img src="./Images/ES.png">
+
 This WordClock can be used in "Online Mode" with WiFi usage or in "Offline Mode" without the need of a local WiFi. In both modes you will be able to use an internal configuration portal to configure your WordClock. See pictures below. =)
 
 Happy printing =)
