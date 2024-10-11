@@ -59,7 +59,7 @@
 // ###########################################################################################################################################
 // # Version number of the code:
 // ###########################################################################################################################################
-const char* WORD_CLOCK_VERSION = "V3.9.0";
+const char* WORD_CLOCK_VERSION = "V3.9.1";
 
 
 // ###########################################################################################################################################
@@ -4015,16 +4015,22 @@ void show_time(int hours, int minutes) {
       if (testPrintTimeTexts == 1) Serial.print("MENOS ");
     }
 
-    // VEINTE / TWENTY: // x:20 + x:25 + x:35 + x:40
-    if ((minDiv == 4) || (minDiv == 5) || (minDiv == 7) || (minDiv == 8)) {
+    // VEINTE / TWENTY: // x:20 + x:40
+    if ((minDiv == 4) || (minDiv == 8)) {
       setLEDcol(132, 137, colorRGB);
       if (testPrintTimeTexts == 1) Serial.print("VEINTE");
     }
 
-    // CINCO / FIVE: (Minutes) // x:05 + x:25 + x:35 + x:55
-    if ((minDiv == 1) || (minDiv == 5) || (minDiv == 7) || (minDiv == 11)) {
+    // CINCO / FIVE: (Minutes) // x:05 + x:55
+    if ((minDiv == 1) || (minDiv == 11)) {
       setLEDcol(160, 164, colorRGB);
       if (testPrintTimeTexts == 1) Serial.print("CINCO");
+    }
+
+    // VEINTICINCO / TWENTYFIVE: (Minutes) // x:25 + x:35
+    if ((minDiv == 5) || (minDiv == 7)) {
+      setLED(160, 170, 1);
+      if (testPrintTimeTexts == 1) Serial.print("VEINTICINCO");
     }
 
     // DIEZ / TEN: (Minutes) // x:10 + x:50
